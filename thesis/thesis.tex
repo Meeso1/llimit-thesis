@@ -261,6 +261,18 @@ TODO\\
 
 TODO
 
+\chapter{Related Work}
+
+\section{RouteLLM}
+
+TODO
+
+\section{RoRF - Routing over Random Forests}
+
+TODO
+
+TODO: More references
+
 \chapter{System Requirements \& Constraints}
 
 TODO: What did I decide to do? What constraints did I settle on?
@@ -274,9 +286,101 @@ TODO: Also include model selection based on price and score.
 
 TODO
 
+\section{Dataset Selection}
+
+The title of the most popular human-evaluated LLM preference dataset without a doubt belongs to \textit{Chatbot Arena Conversations} [TODO: ref]. It is used as primary human-evaluated dataset in referenced works [TODO: verify and ref]. 
+
+\textit{Chatbot Arena Conversations} data consists of a pair of responses from different LLM models to a single user prompt, along with a comparison label, determining which model's answer is considered better by the user. When comparison is unclear, the label can also indicate that both responses were sufficient for a given query, or that neither model managed to produce a good answer. Selection of LLMs is sufficiently wide for a model to learn a broad spectrum of differences between different LLM models, while prompts span a variety of topics. 
+
+However, there is a crucial issue: published in 2022 [TODO: verify], \textit{Chatbot Arena Conversations} dataset only includes comparisons between rather old LLM models. This isn't a disqualifying problem, as my work doesn't focus on particular LLM models. Though, A decision to use this dataset would require two important implications: that human preference during evaluation of a pair of responses remains unchanged, and that the general distribution of responses produced by LLMs is similar.
+
+It's hard to evaluate how close to the truth the first assumption is. While human preferences likely did not change drastically over the last four years, expectations of what LLMs should be able to do did undergo an undeniable change, simply due to their capabilities increasing. Another significant difference may be caused by a wider adoption - people whose responses were used in \textit{Chatbot Arena Conversations} dataset belonged to a significantly narrower group of "early adopters" of LLM technology, compared to a group of LLM users today.
+
+These reasons prompted me to decide to rely on a newer alternative to \textit{Chatbot Arena Conversations} dataset. Collected and released by the same organization (\textit{LMSYS} [TODO: ref]), \textit{LMArena Human Preference} is a successor of aforementioned dataset. It's structure closely resembled \textit{Chatbot Arena Conversations}, also including human comparison results over a pair of LLM responses to the same prompt. Additionally, the dataset includes a range of common prompt labels [TODO: describe], which can be used as additional features in any prediction task. \textit{LMArena Human Preference} is also an improvement in terms of size. It contains around 140 thousand comparison pairs (compared to \textit{Chatbot Arena Conversations}'s 33 thousand), and includes responses from 53 different models (compared to \textit{Chatbot Arena Conversations}'s 20).
+
+It's important to note that due to a very similar structure, these datasets can be used interchangeably. Due to previously mentioned reasons, mainly \textit{LMArena Human Preference} was used for model training and evaluation throughout this work. However, comparisons between datasets are made where relevant, highlighting important differences between their data.
+
+\section{Features}
+
+TODO
+
+\section{Data Analysis}
+
+TODO
+
+\section{Prompt-invariant Scoring}
+
+TODO
+
+\section{LLM Embedding}
+
+TODO
+
+\section{Features}
+
+TODO
+
+\section{Metrics}
+
+TODO
+
+\subsection{DNN-based Embedding}
+
+TODO
+
+\subsection{Tuning-based Embedding}
+
+TODO
+
+\subsection{Attention Embedding}
+
+TODO
+
+\subsection{Prompt-invariant Embedding-based Models}
+
+TODO
+
+\section{Simple Models}
+
+\subsection{DNN Model}
+
+TODO
+
+\subsection{Gradient Boosting Model}
+
+TODO
+
+\section{Complex Models}
+
+\subsection{Transformer Model}
+
+TODO
+
+\subsection{Response Predictive Model}
+
+TODO
+
+\subsection{Multistage Models}
+
+TODO
+
 \chapter{Response Length Prediction}
 
 TODO: Should it be a separate chapter?
+
+\section{Input and Output Data}
+
+TODO
+
+\section{Models}
+
+\subsection{Gradient Boosting Model}
+
+TODO
+
+\subsection{DNN Model}
+
+TODO
 
 \chapter{Analysis of the Solution}
 
