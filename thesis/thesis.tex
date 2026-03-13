@@ -300,15 +300,82 @@ These reasons prompted me to decide to rely on a newer alternative to \textit{Ch
 
 It's important to note that due to a very similar structure, these datasets can be used interchangeably. Due to previously mentioned reasons, mainly \textit{LMArena Human Preference} was used for model training and evaluation throughout this work. However, comparisons between datasets are made where relevant, highlighting important differences between their data.
 
-\section{Features}
+\section{Preprocessing \& Feature Selection}
+\label{section:preprocessing-and-features}
 
-TODO
+Intuitively, when it comes to inferring the quality of LLM's response to a given input, the most important aspect of that prompt should be it's semantic meaning - ideally, prompts that are equivalent when it comes to meaning, differing only in wording, should produce the same answer. Semantic meaning of a given text can be captured via a range of specialized text embedding models, which, given an input, return a vector that should be useful for a range of classification or regression tasks. [TODO: references, examples]. As such, prompt embedding vectors are a primary candidate for model input features.
+
+In practice, assumption that prompt features which are unrelated to it's meaning shouldn't influence LLM output isn't reasonable. LLMs in they current state are far from ideal, so certain biases and simple relationships cannot be ruled out. Thus, instead of relying solely on prompt embedding vectors, input features also contain a set of supporting values that represent certain characteristics of submitted question.
+
+Aside from prompt embedding vectors, the following simple features were used:
+
+\subsection{Complexity Features}
+
+8 features encoding prompt complexity were defined:
+
+\begin{itemize}
+    \item \textbf{Character count};
+    \item \textbf{Word count};
+    \item \textbf{Sentence count};
+    \item \textbf{Average word length};
+    \item \textbf{Question density} - Number of question marks in the prompt, divided by prompt length;
+    \item \textbf{Nesting density} - Number of parentheses, divided by prompt length;
+    \item \textbf{Multi-part indicator density} - Number of words indicating multiple aspects/parts in the prompt ("and", "also", etc.), divided by prompt length;
+    \item \textbf{Inverse vocabulary richness ratio} - $1 - \frac{\text{[number of unique words]}}{\text{[word count]}}$.
+\end{itemize}
+
+Features that don't directly encode prompt length were normalized by that length, in order to reduce dependency between them - for example, it's reasonable to assume that longer prompts will, on average, contain more parentheses and question marks than shorter prompts.
+
+Vocabulary richness ratio was inverted by subtracting it's value from 1. This transformation was performed to make value distribution more similar to other features, which made it possible to unify it's further processing with other features [TODO: ref]. In an overwhelming majority of samples, nearly all words are different, causing vocabulary richness ratio to primarily take a value of 1 (or close to it). "Inverting" values causes them to instead be 0 (or close to it).
+
+\subsection{Domain Scores}
+
+12 features describing prompt domain were defined:
+
+\begin{itemize}
+    \item \textbf{Science};
+    \item \textbf{Medicine};
+    \item \textbf{Law};
+    \item \textbf{Finance};
+    \item \textbf{Tech};
+    \item \textbf{Academic};
+    \item \textbf{Casual};
+    \item \textbf{Formal};
+    \item \textbf{Philosophical};
+    \item \textbf{Historical};
+    \item \textbf{Personal};
+    \item \textbf{Business};
+\end{itemize}
+
+Each domain score was defined as a ratio of words related to that domain, to total word count of the prompt.
+
+\subsection{Style Features}
+
+6 style features were defined:
+
+\begin{itemize}
+    \item \textbf{Informal marker density} - Number of informal style indicators (like "btw", "tbh", etc.), divided by prompt length;
+    \item \textbf{Specificity marker density} - Number of words indicating constraints and requirements (like "exactly", "must", etc.), divided by prompt length;
+    \item \textbf{Politeness marker density} - Number of words indicating polite tone (like "please"), divided by prompt length;
+    \item \textbf{Urgency marker density} - Number of words indicating urgency (like "quickly", "fast", etc.), divided by prompt length;
+    \item \textbf{Starts with verb} - Boolean feature indicating that first word of the prompt is a verb;
+    \item \textbf{Is a question} - Boolean feature indicating that the prompt ends with a question mark;
+\end{itemize}
+
+\subsection{Task Type Features}
+
+10 boolean features defining type of the task given by a prompt were defined:
+
+\begin{itemize}
+    \item \textbf{Expects code} - Whether prompt contains words indicating that code should be returned;
+    \item \textbf{Contains code} - Whether prompt contains code blocks;
+    \item \textbf{Expects math} - Whether prompt contains words indicating that some mathematical calculation should be performed;
+    \item \textbf{Contains numbers} - Whether prompt contains numbers;
+    \item \textbf{Contains math symbols} - Whether prompt contains common math symbols (i.e. equality symbol);
+    \item TODO: Continue
+\end{itemize}
 
 \section{Data Analysis}
-
-TODO
-
-\section{Prompt-invariant Scoring}
 
 TODO
 
@@ -316,17 +383,78 @@ TODO
 
 TODO
 
-\section{Features}
+\section{Prompt-invariant Scoring}
 
-TODO
+A natural simplification of prompt routing problem comes from an assumption that LLM performance does not depend on the prompt. In this case, every LLM has a single score associated with them, and the problem reduces to assigning those scores based on comparison data. While this simplification makes the problem much less interesting and complex, it is more commonly used when ranking LLMs, due to capturing a general LLM quality rather than focusing on particular cases [TODO: examples, refs]. Also, exploration of this problem will serve as a good baseline for prompt-aware scoring.
 
-\section{Metrics}
+\subsection{Iterative Models}
 
-TODO
+TODO (do I need this section?)
+
+\subsection{Non-iterative Models}
+
+The problem of scoring entries based on comparison data can be expressed more rigorously, turning it into an optimization problem with well-defined fitness metric. Some such expressions have easily computable optimal solution.
+
+\subsubsection{L1 Criterion}
+
+The most natural way of expressing quality of score assignment is via accuracy - a percentage of comparisons where winning entry was assigned a higher score than the losing one. This is equivalent to minimizing the number of \textit{upsets} (comparisons such that entry A wins against entry B, but A was assigned a lower score than B). This criterion turns out to be NP-hard [TODO: ref]. However, if we take into account the magnitude of upsets (difference between scores assigned to A and B), the problem becomes solvable in polynomial time. Minimizing the sum of magnitudes can be expressed as a linear programming problem ($v_a$ represents the score assigned to entry A, and $\epsilon$ is added to prevent trivial solution of all scores being 0):
+
+\begin{align*}
+    \textrm{minimize} & \quad \sum s_i \\
+    \textrm{subject to} & \quad v_a - v_b + s_i \geq \epsilon \\
+    \textrm{for} & \quad a > b \quad \textrm{in comparison set}
+\end{align*}
+
+This criterion can be equivalently formulated via a min-cost-max-flow problem.
+
+\begin{enumerate}
+    \item Each node (except source and sink) represents an entry;
+    \item A comparison in which A wins against B is expressed as an edge from node A to node B, of capacity 1 and cost 1;
+    \item There's an edge from source to each node, with cost 0 and capacity equal to it's number of wins;
+    \item There's an edge from each node to sink, with cost 0 and capacity equal to it's number of losses.
+\end{enumerate}
+
+Then, node potentials can be interpreted entry scores.
+
+[TODO: results]
+
+The solution to min-cost-max-flow problem also gives us an additional useful metric: percentage of "meaningful" comparisons in the comparison set. Any cycle in the network has positive cost (since all edges that don't include source and sink have positive cost), so optimal flow won't use them. Using that information, we can compute the ratio of used comparison edges (equal to total cost) to all comparisons. This quantity can be interpreted as decisiveness of comparison set - since comparison cycles can't be scored correctly, the more common they are, the less correct is it to represent LLM quality via a single, prompt-independent score.
+
+\subsubsection{L2 Criterion}
+
+Minimizing squares of upset magnitudes turns out to be even simpler - it is a variation of "least squares" problem. As such, this approach was chosen.
+
+[TODO: results]
+
+Turns out that this criterion results in a significantly better accuracy than linear one. As such, it's accuracy will be used as baseline for other models. 
+
+\section{LLM Embedding}
+
+LLM ecosystem is constantly evolving, with new models being introduced often. While dataset selection was made with that in mind, and chosen dataset contains comparisons of LLMs that are quite new at the time of writing, constraining scoring models to only work with LLMs featured in a comparison dataset doesn't seem like a practical decision. Such datasets rely on human evaluation, and aren't easy to prepare.
+
+An extensible alternative to scoring only LLMs whose comparison data is available, is to compute an embedding vector representing each model, and use that instead of LLM ID as scoring input data. Such embeddings can be computed without relying on comparison data, making the model easily extensible. In particular, embeddings can be computed from a set of prompts and LLM responses to them. This information is much easier to gather than human evaluations, and can be collected automatically. 
+
+An argument can also be made that prompts and responses represent all information required for scoring. This perspective makes it possible to define embedding computation problem in a way that avoids underspecification problem [TODO: better name?]. Comparisons dataset that was selected contains promtps and responses from 50 distinct LLMs, which severely limits the dimensionality of embedding vectors. By viewing LLM characteristics as only defined by responses they produce to given prompts, we can instead focus on computing embedding vectors for each prompt and response pair, subsequently defining LLM embeddings as a mean (or in general: some function) of embeddings computed from their prompt and response pairs. 
+
+\subsection{Metrics}
+
+Embeddings will be used by scoring models to distinguish between LLMs, and subsequently be able to determine certain characteristics of their response patterns. This means that the most important quality of LLM embeddings is distinguishability - given a prompt and response pair, we should be able to tell which LLM it was produced by. Rigorously, we can define an accuracy metric as follows:
+
+TODO: equation
+
+TODO: Other metrics?
+
+\subsection{Features}
+
+As described in section \ref{section:preprocessing-and-features}, text embedding vectors are used as input features. As LLM embeddings are computed from both prompts and responses, text embedding vectors of both are included in input data. Additionally, certain handcrafted response features are also included.
+
+[TODO: list features]
 
 \subsection{DNN-based Embedding}
 
-TODO
+The simplest implementation of embedding model is simply a multi-layer perceptron. \textit{LeakyReLU} activation function was used, and dropout layers were introduced to prevent overfitting.
+
+Model was trained using triplet margin loss, given by formula [TODO: ref]. Loss criterion can be described as a requirement that a pair of samples from the same LLM should be closer to each other than to a third sample, produced by a different LLM.
 
 \subsection{Tuning-based Embedding}
 
