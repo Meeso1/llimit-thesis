@@ -375,15 +375,24 @@ Each domain score was defined as a ratio of words related to that domain, to tot
     \item TODO: Continue
 \end{itemize}
 
-\section{Data Analysis}
+TODO: List remaining features
 
-TODO
+\section{Data Analysis \& Transformations}
 
-\section{LLM Embedding}
+Feature transformations were defined based on their value distributions. Two kinds of transformations were defined for numeric data, described further in this section. Aside from these transformations, all numeric features were scaled to mean 0 and standard deviation equal to 1.
 
-TODO
+First, certain features show exponential behavior. Features related to prompt length are a perfect example of that [TODO: ref some plot]. Those features were transformed using a logarithm [TODO: reword] to achieve a more uniform value distribution. Small values are clipped to $10^{-6}$ to prevent them from exploding to $-\infty$. 
+
+Second, certain numeric features are dominated by zero values. Domain scores are a good example. Most prompts don't refer to anything related to finance. While distinguishing between prompts where financial language dominates from prompts that contain a handful of financial terms might be significant, simply transforming the data via a logarithm causes prompts without financial language to have scores which are similar to prompts containing only a few phrases related to finance, making those two cases hard to distinguish. Additionally, zero value dominance will negatively impact scaling. To address these issues, the transformation described by equation [TODO: ref] was introduced. Additionally, to address the scaling issue, zero values were excluded from scaling - mean and standard deviation necessary for scaling was computed from remaining values. 
+
+TODO: equation
+
+Transformation is applied after scaling. Softplus operation transforms non-zero data from $(-\infty, \infty)$ range onto $(0, \infty)$, while keeping the monotonicity [TODO: beter word] relatively unchanged. To ensure a clear separation between zero and small but nonzero samples, zero values are encoded as $-1$.
+
+[TODO: plots for each feature + chosen transforms]
 
 \section{Prompt-invariant Scoring}
+\label{section:prompt-invariant-scoring}
 
 A natural simplification of prompt routing problem comes from an assumption that LLM performance does not depend on the prompt. In this case, every LLM has a single score associated with them, and the problem reduces to assigning those scores based on comparison data. While this simplification makes the problem much less interesting and complex, it is more commonly used when ranking LLMs, due to capturing a general LLM quality rather than focusing on particular cases [TODO: examples, refs]. Also, exploration of this problem will serve as a good baseline for prompt-aware scoring.
 
@@ -438,7 +447,7 @@ An argument can also be made that prompts and responses represent all informatio
 
 \subsection{Metrics}
 
-Embeddings will be used by scoring models to distinguish between LLMs, and subsequently be able to determine certain characteristics of their response patterns. This means that the most important quality of LLM embeddings is distinguishability - given a prompt and response pair, we should be able to tell which LLM it was produced by. Rigorously, we can define an accuracy metric as follows:
+Embeddings will be used by scoring models to distinguish between LLMs, and subsequently be able to determine certain characteristics of their response patterns. This means that the most important quality of LLM embeddings is distinguishability - given a subset of prompt and response pairs form a single LLM, we should be able to tell which LLM it was produced by. Rigorously, we can define an accuracy metric as follows:
 
 TODO: equation
 
@@ -446,37 +455,84 @@ TODO: Other metrics?
 
 \subsection{Features}
 
-As described in section \ref{section:preprocessing-and-features}, text embedding vectors are used as input features. As LLM embeddings are computed from both prompts and responses, text embedding vectors of both are included in input data. Additionally, certain handcrafted response features are also included.
+As described in section \ref{section:preprocessing-and-features}, text embedding vectors are used as input features. As LLM embeddings are computed from both prompts and responses, text embedding vectors of both are included in input data. Additionally, certain handcrafted response features are also included. As prompts are of secondary importance scalar prompt features described in section \ref{section:preprocessing-and-features} were not used.
 
 [TODO: list features]
 
 \subsection{DNN-based Embedding}
 
-The simplest implementation of embedding model is simply a multi-layer perceptron. \textit{LeakyReLU} activation function was used, and dropout layers were introduced to prevent overfitting.
+The simplest implementation of embedding model is simply a multi-layer perceptron. \textit{LeakyReLU} activation function was used, and dropout layers were introduced to prevent overfitting. Hidden layer sizes (and their number) are configurable.
 
-Model was trained using triplet margin loss, given by formula [TODO: ref]. Loss criterion can be described as a requirement that a pair of samples from the same LLM should be closer to each other than to a third sample, produced by a different LLM.
+Model was trained using triplet margin loss, given by formula [TODO: ref]. Training sample features three prompt and response pairs: anchor, positive, and negative. Positive pair is produced by the same LLM as anchor, while negative pair is produced by a different LLM. Loss criterion encourages the model to produce embeddings such that the distance between anchor and positive embeddings is smaller than between anchor and negative (plus a margin).
+
+Additionally, KL loss was introduced to encourage a sample embeddings to follow a normal distribution.
+
+[TODO: results]
 
 \subsection{Tuning-based Embedding}
 
-TODO
+Text embedding vectors used by DNN embedding model are generated using a pre-trained, frozen transformer model. It can be improved by unfreezing model weights, and tuning them during training.
+
+Tuning-based embedding model does just that. For efficiency, only last two layers of the model were unfrozen. To ensure that embedding dimension is configurable and does not depend on the choice of transformer model, projection layer was added. The same loss criterion was used as in previous approach - triplet margin and KL loss.
+
+[TODO: It might be a good idea to improve impl there - scoring transformer does things better]
+
+[TODO: results]
 
 \subsection{Attention Embedding}
 
-TODO
+TODO: Something about set embedding problem (with references)
+
+Attention embedding model implements the idea described in [TODO: ref]. The model consists of two modules: pair encoder and set aggregator. Pair encoder takes prompt and response embeddings together with scalar features as inputs, projects each into a vector of configurable dimensionality, enriches these projections with interaction features (difference between prompt and response embeddings, and their element-wise product), then runs these features through a multi-layer perceptron to produce an embedding vector.
+
+Set aggregator module uses sample embeddings produced by pair encoder, outputting a single LLM embedding vector. In previous embedding models, this step was done by a simple mean computation, instead. Set aggregator uses attention mechanism. Pair embeddings are used to produce key (K) and value (V) vectors through learnable linear projections. Then, attention masks are computed by a configurable number of attention heads. This mask is then used to produce a single LLM embedding from value vectors produced from pair embeddings.
+
+The model is trained using a supervised contrastive loss. In each batch, multiple embeddings are computed for each model, using different subsets of samples. Loss criterion encourages representations of the same model to be closer to each other than to all other representations. This directly represents the distinguishability requirement - embeddings produced by different subsets of samples from the same LLM should be different than embeddings of other LLMs.
+
+[TODO: formulas]
+
+[TODO: some diagram]
+
+[TODO: results]
 
 \subsection{Prompt-invariant Embedding-based Models}
+\label{section:prompt-invariant-embedding-based-models}
 
-TODO
+While distinguishability metric should closely correlate with LLM embedding usefulness, it can be validated by implementing a prompt-invariant scoring model which uses LLM embeddings instead of IDs, contrary to models described in section \ref{section:prompt-invariant-scoring}. If LLM embeddings are good enough, any iterative model should easily be able to reach similar accuracy to optimal one achieved by "least squares" model.
+
+To validate that hypothesis, gradient boosting model was implemented. The model was trained using margin ranking loss.
+
+[TODO: results]
 
 \section{Simple Models}
 
-\subsection{DNN Model}
-
-TODO
-
 \subsection{Gradient Boosting Model}
 
-TODO
+[TODO: What is gradient boosting?]
+
+Gradient boosting models are a common first choice when developing a machine learning solution for regression and classification problems. They are usually quick to learn various simple and intermediate patterns from the data. [TODO: verify] Additionally, their structure makes them relatively interpretable (especially in comparison to various neural network-based models) - as gradient boosting model is simply an ensemble of decision trees, nodes of these trees can be analyzed to find certain patterns about input to output relationships.
+
+Instead of implementing a separate, prompt-aware gradient boosting model, implementation described in section \ref{section:prompt-invariant-embedding-based-models} was extended, making input data used for scoring configurable. Based on configuration, in addition to LLM embeddings model can rely on prompt embedding vectors, as well as scalar prompt features.
+
+To match the interface of other models described further in this section, whose training process is based on \textit{epochs}, the implementation of gradient boosting algorithm does not rely on a explicitly set number of boosting iterations - contrary to the interface offered by, for example, \texttt{XGBoost} package. This dynamic approach makes it possible to perform validations or checkpointing between epochs, and most importantly allows us to implement a mechanism which reverts model state to the one that achieved the best validation accuracy. This means that longer training process can never have a negative effect on model quality - if the model starts to overfit to training data, or hits a plateau, it will be reverted to best recorded state.
+
+Due to it's convenience, this state reverting mechanism was implemented in all iterative models implemented during this project.
+
+TODO: results
+
+\subsection{DNN Model}
+
+The first deep learning model that was implemented uses a simple multi-layer neural network. It takes LLM embeddings, prompt embeddings, and prompt scalar features as input, and outputs a score representing how well given LLM would handle provided prompt.
+
+Three distinct input vectors don't have to share any characteristics, like dimensionality, scale, or importance. For each, a separate projection layer was introduced. These layers transform input vectors into representations of set dimensionality, which subsequently are concatenated and used as input to the following layers of the network.
+
+Number and sizes of hidden layers are configurable. \textit{LeakyReLU} was chosen as the activation function, with negative slope set to $0.1$. Dropout layers were introduced between each pair of hidden layers to prevent overfitting. Additionally, \textit{LayerNorm} layers were introduced for regularization, and gradient clipping was introduced to prevent gradient explosions during training. 
+
+The score assignment goal that the network tries to achieve does not inherently require any specific scale of outputs. As scores are only ever used for comparison, transforming them through any strictly increasing function does not change the quality of the result - for each compared pair of models, bigger score will still be bigger after the transformation. This ambiguity is undesired and impractical from human perspective. Introducing a secondary training objective could be a solution to this problem, however it is unnecessary in this case. Instead of introducing an additional loss term, whose influence may negatively impact the primary objective, score post-processing was introduced. After training, mean and standard deviation of scores assigned to training data is computed, such that subsequent inference results can be normalized to mean 0 and standard deviation equal to 1. Additionally, scaled scores are transformed using a scaled hyperbolic tangent function onto a $(-1, 1)$ range.
+
+Two interchangeable loss functions were implemented: margin ranking loss and Bradley-Terry sigmoid cross-entropy loss. Initially, margin ranking loss seemed more favorable - once scores assigned to a given training pair satisfy the comparison with a margin, the pair has no contribution to loss gradients, and therefore model is not encouraged to widen the score gap. Intuitively, this is a desired behavior. Assigning a widely different scores to compared samples is by no means better than keeping their difference small. However, margin ranking loss turned out to under-perform significantly in practice. [TODO: continue based on results]
+
+TODO: results
 
 \section{Complex Models}
 
