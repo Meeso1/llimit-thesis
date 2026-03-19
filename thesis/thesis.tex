@@ -454,6 +454,7 @@ TODO: equation
 TODO: Other metrics?
 
 \subsection{Features}
+\label{section:llm-embedding-features}
 
 As described in section \ref{section:preprocessing-and-features}, text embedding vectors are used as input features. As LLM embeddings are computed from both prompts and responses, text embedding vectors of both are included in input data. Additionally, certain handcrafted response features are also included. As prompts are of secondary importance scalar prompt features described in section \ref{section:preprocessing-and-features} were not used.
 
@@ -521,6 +522,7 @@ Due to it's convenience, this state reverting mechanism was implemented in all i
 TODO: results
 
 \subsection{DNN Model}
+\label{section:dnn-model}
 
 The first deep learning model that was implemented uses a simple multi-layer neural network. It takes LLM embeddings, prompt embeddings, and prompt scalar features as input, and outputs a score representing how well given LLM would handle provided prompt.
 
@@ -530,7 +532,7 @@ Number and sizes of hidden layers are configurable. \textit{LeakyReLU} was chose
 
 The score assignment goal that the network tries to achieve does not inherently require any specific scale of outputs. As scores are only ever used for comparison, transforming them through any strictly increasing function does not change the quality of the result - for each compared pair of models, bigger score will still be bigger after the transformation. This ambiguity is undesired and impractical from human perspective. Introducing a secondary training objective could be a solution to this problem, however it is unnecessary in this case. Instead of introducing an additional loss term, whose influence may negatively impact the primary objective, score post-processing was introduced. After training, mean and standard deviation of scores assigned to training data is computed, such that subsequent inference results can be normalized to mean 0 and standard deviation equal to 1. Additionally, scaled scores are transformed using a scaled hyperbolic tangent function onto a $(-1, 1)$ range.
 
-Two interchangeable loss functions were implemented: margin ranking loss and Bradley-Terry sigmoid cross-entropy loss. Initially, margin ranking loss seemed more favorable - once scores assigned to a given training pair satisfy the comparison with a margin, the pair has no contribution to loss gradients, and therefore model is not encouraged to widen the score gap. Intuitively, this is a desired behavior. Assigning a widely different scores to compared samples is by no means better than keeping their difference small. However, margin ranking loss turned out to under-perform significantly in practice. [TODO: continue based on results]
+Two interchangeable loss functions were implemented: margin ranking loss and Bradley-Terry sigmoid cross-entropy loss. Initially, margin ranking loss seemed more favorable - once scores assigned to a given training pair satisfy the comparison with a margin, the pair has no contribution to loss gradients, and therefore model is not encouraged to widen the score gap. Intuitively, this is a desired behavior. Assigning a widely different scores to compared samples is by no means better than keeping their difference small. However, margin ranking loss turned out to under-perform significantly in practice. This observation motivated the implementation of an alternative.
 
 TODO: results
 
@@ -538,15 +540,66 @@ TODO: results
 
 \subsection{Transformer Model}
 
-TODO
+Sentence encoding transformers are a useful tool that transform text into a fixed-dimensional vector encoding it's meaning, hopefully in a way that's useful for subsequent machine learning tasks. The main input data of the scoring task is the prompt for which an LLM needs to be selected, and as such pretrained sentence transformers seem like a good candidate for the main, trainable part of the scoring model.
+
+The core of the transformer model is a pretrained sentence transformer model, which is being fine-tuned during the training process. The output of the transformer model is passed to a scoring head, which consists of a small (configurable) number of dense layers, using \textit{LeakyReLU} activation functions (with negative slope equal to $0.1$) and dropout layers. Scoring head module also takes LLM embeddings and scalar prompt features as inputs (since, naturally, sentence transformer module only takes text as input). These input vectors are initially passed through projection layers, similarly to what is described in \ref{section:dnn-model}.
+
+The core transformer model is loaded from \textit{HuggingFace} using \texttt{sentence-transformers} library. [TODO: something more]. Wide variety of available models make it possible to test different options, with varying parameter counts, output dimensionalities, and architectures.
+
+A number of fine-tuning methods were implemented. Initially, the easiest approach involved simply unfreezing $n$ final layers of the model. This turned out to produce terrible results, while also not reducing the number of trainable parameters enough. [TODO: something more]. \textit{LoRA} and \textit{QLoRA} methods were implemented as alternatives. The main idea behind \textit{LoRA} (or \textit{Low Rank Adaptation}) is the introduction of a smaller number of new, trainable parameters, while keeping original model weights frozen. Effective, altered model weights are computed according to equation \ref{eq:lora}, where $r$ is a configurable rank of the transformation. [TODO: ref + some justification?]
+
+\begin{align}
+\label{eq:lora}
+    W' &= W + A B \\
+    W &\in R^{m \times n} \\
+    A &\in R^{m \times r} \\
+    B &\in R^{r \times n}
+\end{align}
+
+\textit{QLoRA} extends \textit{LoRA} method by also introducing model weight quantization. By default, transformer models usually use 16-bit floating point numbers as weights. QLoRA performs 8-bit quantization, followed by a 4-bit quantization using \textit{NormalFloat4} technique [TODO: ref]. \textit{NormalFloat4} encoding is a theoretically optimal way of encoding normally distributed values. While there is no theoretical reason to expect network weights to be normally distributed (although, perhaps, an argument could be made that this expectation is justified by Central Limit Theorem [TODO: ref], treating individual weight updates as random variables), this quantization method does seem effective in practice [TODO: ref]. Only the original model weights are quantized - new, trainable parameters from LoRA matrices retain their full, 16-bit representation. In addition to quantization, QLoRA also implements optimizer state pagination. To avoid out-of-memory issues during training, optimizer parameters (momentum, cache, etc.) that are not in active use are transferred to CPU memory. This results in a time overhead caused by numerous data transfers between GPU and CPU memory, but allows training larger models on a given architecture.
+
+[TODO: Some diagram for QLoRA]
+
+The model is designed to learn most information required for score prediction through fine-tuning. This decision dictates the small size of scoring head module - it's only purpose is to combine LLM embedding vectors (and scalar prompt features, if they turn out to be useful) with prompt embeddings. However, this introduces certain risks. The "path length", or, more formally, number of operations, between prompt text and output is significantly bigger than between other inputs and output. This may cause the model to initially take the path of least resistance, focusing only on LLM embeddings (essentially learning optimal prompt-invariant score for each vector), and discarding prompt embeddings entirely, essentially blocking gradient flow to the transformer module.
+
+To address this issue, simple concatenation of projections of scoring head input vectors was replaced by another combining operation. The goal is to discourage the model from learning scores that depend only on LLM embeddings, and instead encourage it to produce scores based on certain interactions between prompt representation and LLM embedding. To encode that interaction, scalar product was used. Scoring head module takes as input the scalar product of LLM embedding projection, and concatenated prompt embedding and scalar prompt features projections. As scalar product requires arguments to be of the same dimensionality, projection layer sizes were adjusted. Size of scalar features projection is configurable, with prompt embedding projection being twice as big, and LLM embedding projection - three times as big.
+
+Of course, this approach does not guarantee that the model cannot ignore prompts. [TODO: handle zeroing prompt text input while keeping prompt features input]. To achieve that, while retaining LLM embedding information, transformer module would need to learn to output a constant, non-zero vector for every prompt. Importantly, though, this state doesn't block the gradient flow to transformer module - even if the model initially does learn to ignore prompt information, it should, theoretically, be able to continue learning prompt-specific relationships after reaching optimal prompt-invariant scoring accuracy.
+
+The same loss functions were implemented as in previously described models (in section \ref{section:dnn-model}). Furthermore, the same arguments prompted the decision to leave score values unconstrained during training, adding normalization and hyperbolic tangent transformation as a post-processing step, instead. Transformer model also uses the same state reverting mechanism, preventing loss of quality due to overfitting. Additionally, since training process of this model is significantly more time-consuming, checkpointing was implemented, saving model state every few epochs, which proved useful in case of crashes during training (mostly due to out-of-memory errors).
+
+TODO: Results
 
 \subsection{Response Predictive Model}
 
-TODO
+Models described in previous sections have one common characteristic: they do not use LLM responses during training, despite them being available in the dataset. The reason of that is quite obvious - LLM responses are not accessible at inference time. The whole point of assigning scores to LLMs is to be able to decide which will produce the best response, without actually requesting that response. Intuitively, if LLM responses were available, the task should be significantly easier. Assigning scores based only on the prompt and information about chosen LLM internally requires deducing certain response characteristics, based on which scoring can subsequently be performed.
+
+The main idea of response predictive model is to utilize response data as much as possible, without requiring it for inference. This is achieved by dividing the scoring task into two parts, described in previous paragraph. First module, the predictor, is responsible for predicting response representation, given information about the prompt and chosen LLM. Second module, the scorer, is responsible for assigning a score, based only on that representation (without additional information about the LLM). End-to-end process retains the same input/output interface as other models, taking prompt and LLM data as input, and returning a score. However, explicit separation of evaluation steps opens new possibilities for training.
+
+Prompt and LLM representations used by response predictive model are the same as in other models. Prompts are represented by text embedding vectors and scalar features, while LLMs are encoded as embedding vectors. As this model also uses LLM responses, they need to be represented somehow. The simplest possibility would be to use a similar representation to what is described in section \ref{section:llm-embedding-features}. This representation might be useful for scoring, however there is no guarantee that it would be possible to predict it from just prompt and LLM data. In general, predicting LLM responses is an extremely hard task - predicting all characteristics of the response would be essentially equivalent of generating the response, requiring parameter counts and training data volumes orders of magnitude larger than what's achievable in this project. So, response representation should be carefully tuned in such a way that it is still useful for the scoring module, while also being predictable by the predictor module.
+
+Finding such a representation can be incorporated into the training process. A third module is introduced: response encoder. Given response representation (in format described in section \ref{section:llm-embedding-features}), it learns to produce response embedding vectors.
+
+TODO: diagram
+
+Four loss components are combined. First criterion is the same as scoring loss options that are used as in previously described models: either margin ranking loss or Bradley-Terry sigmoid cross-entropy. Second criterion encodes prediction accuracy [TODO: equation]. It encourages predictor module to produce outputs similar to those produced by response encoder. Encoder outputs are treated as constants in this case. Third criterion is the same as second, but treating predictor outputs as constants instead. It instructs response encoder module to produce representations that predictor module is able to predict. Fourth criterion is given by equation [TODO: ref]. It is a KL loss term, encouraging a normalized distribution of response embeddings. In particular, this prevents initial representation collapse to a single value - it is a trivially optimal solution to the second and third loss criterion. Importances of loss criteria are controlled by configurable weights. 
+
+[TODO: Change `real\_repr` mixing]
+Importantly, predictor and response encoder operate on different inputs. Response encoder has access only to real LLM response representations, while predictor has no information about them. As responses are not available during inference, response encoder is not used in that case. It's purpose is to help in discovering response representations that can be useful for scoring. Having access to actual responses, finding such embeddings should be much easier.
+
+Modular structure of response predictive model makes it more interpretable than most other models, which usually function as black-box predictors. Each of the three modules has it's separate role, making it easy to measure the quality with which it performs it's task. In particular, we can decouple prediction errors from representation and scorer errors, by comparing scoring accuracy when response embeddings are predicted, with scoring accuracy using real response embeddings. Similarly, predictor quality can be tracked by measuring common regression metrics, like mean squared error or cosine similarity, and by comparing distributions of real and predicted embeddings - ideally, if predictor and encoder modules find some representation equilibrium, distribution should be similar.  
+
+TODO: results
 
 \subsection{Multistage Models}
 
-TODO
+Models described in this section are focusing on assigning a score based on prompt and LLM information. In some cases, it's possible to at least partially interpret their decisions ([TODO: ref]), but in general this formulation of the task does not require any interpretability. To help with that, model chaining mechanism was introduced. Taking advantage of the fact that scores learned during training are not constrained in any way, given a trained scoring model as "base", another can be fitted on it's errors, attempting to predict the difference between it's predecessor and the true value. Final scores are defined as the sum of both predictions.
+
+Multi-stage models can be especially useful when a prompt-invariant model is used as base. As described in section \ref{section:prompt-invariant-scoring}, optimal score assignment based only on chosen LLM is rather simple. By using such model and training a more complex model to predict prompt-specific differences, we clearly separate accuracy and score contributions based on if prompt information is used.
+
+An additional advantage of multi-stage approach is faster training. Complex models may take multiple epochs before reaching the optimal prompt-invariant accuracy. If prompt-invariant model is used as base, however, optimal prompt-invariant accuracy is the starting point.
+
+TODO: results
 
 \chapter{Response Length Prediction}
 
