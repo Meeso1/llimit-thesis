@@ -438,12 +438,20 @@ Minimizing squares of upset magnitudes turns out to be even simpler - it is a va
 Turns out that this criterion results in a significantly better accuracy than linear one. As such, it's accuracy will be used as baseline for other models. 
 
 \section{LLM Embedding}
+\label{section:llm-embedding}
 
 LLM ecosystem is constantly evolving, with new models being introduced often. While dataset selection was made with that in mind, and chosen dataset contains comparisons of LLMs that are quite new at the time of writing, constraining scoring models to only work with LLMs featured in a comparison dataset doesn't seem like a practical decision. Such datasets rely on human evaluation, and aren't easy to prepare.
 
 An extensible alternative to scoring only LLMs whose comparison data is available, is to compute an embedding vector representing each model, and use that instead of LLM ID as scoring input data. Such embeddings can be computed without relying on comparison data, making the model easily extensible. In particular, embeddings can be computed from a set of prompts and LLM responses to them. This information is much easier to gather than human evaluations, and can be collected automatically. 
 
-An argument can also be made that prompts and responses represent all information required for scoring. This perspective makes it possible to define embedding computation problem in a way that avoids underspecification problem [TODO: better name?]. Comparisons dataset that was selected contains promtps and responses from 50 distinct LLMs, which severely limits the dimensionality of embedding vectors. By viewing LLM characteristics as only defined by responses they produce to given prompts, we can instead focus on computing embedding vectors for each prompt and response pair, subsequently defining LLM embeddings as a mean (or in general: some function) of embeddings computed from their prompt and response pairs. 
+An argument can be made that prompts and responses represent all information required for scoring. This way of specifying the problem transforms it into a set embedding problem: given a set of samples, define an embedding function that satisfies some requirements, while being invariant to sample ordering. Many solutions to this problem have been developed and discussed. One such solution is described by Zaheer et. al. in \textit{DeepSets} paper \cite{zaheer2017deep}. It shows that such set embedding function can be defined as a function of a mean of sample embeddings (equation \ref{eq:set-embedding-mean}). $P_{out}$ represents final output transformation, while $E_s$ is a sample embedding function. 
+
+\begin{equation}
+\label{eq:set-embedding-mean}
+    E(S) = P_{out}(\frac{1}{\vert S \vert} \sum_{x \in S} E_s(x))
+\end{equation}
+
+This specification of the problem has an important, additional benefit. Comparisons dataset which was selected contains prompts and responses from 50 distinct LLMs. Original formulation of the problem, which focuses on assigning a single embedding vector to each LLM, only ever produces 50 different embedding values, which severely limits the dimensionality of embedding vectors before the problem becomes underspecified. By viewing LLM characteristics as only defined by responses they produce to given prompts, we can instead focus on computing embedding vectors for each prompt and response pair, raising the number of computed embedding values to ~140k.
 
 \subsection{Metrics}
 
@@ -482,17 +490,37 @@ Tuning-based embedding model does just that. For efficiency, only last two layer
 
 \subsection{Attention Embedding}
 
-TODO: Something about set embedding problem (with references)
+Set embedding problem is quite common in machine learning, and as such, a number of solutions were proposed over the years. The general idea presented in the preamble of section \ref{section:llm-embedding}, defining LLM embedding as a mean of embeddings of their outputs, is loosely inspired by Zaheer et. al. \textit{DeepSets} paper \cite{zaheer2017deep}. While well received and widely cited, alternatives and extending works exist. One such work is Lee et. al. \textit{Set Transformer} paper \cite{lee2019set}. It challenges an implicit assumption that importance of all set elements is equal. The paper proposes a relatively simple alternative to taking a mean of sample representations - attention mechanism. The rationale behind that change is that certain samples provide a much clearer information about the set than others - capturing behaviors or characteristics that highlight differences between a given set and the rest.
 
-Attention embedding model implements the idea described in [TODO: ref]. The model consists of two modules: pair encoder and set aggregator. Pair encoder takes prompt and response embeddings together with scalar features as inputs, projects each into a vector of configurable dimensionality, enriches these projections with interaction features (difference between prompt and response embeddings, and their element-wise product), then runs these features through a multi-layer perceptron to produce an embedding vector.
+Attention embedding model implements that idea. The model consists of two modules: pair encoder (illustrated by figure \ref{fig:attention-embedding-pair-encoder}) and set aggregator (shown on figure \ref{fig:attention-embedding-set-embedding}). Pair encoder takes prompt and response embeddings together with scalar features as inputs, projects each into a vector of configurable dimensionality, enriches these projections with interaction features (difference between prompt and response embeddings, and their element-wise product), then runs these features through a multi-layer perceptron to produce an embedding vector.
 
-Set aggregator module uses sample embeddings produced by pair encoder, outputting a single LLM embedding vector. In previous embedding models, this step was done by a simple mean computation, instead. Set aggregator uses attention mechanism. Pair embeddings are used to produce key (K) and value (V) vectors through learnable linear projections. Then, attention masks are computed by a configurable number of attention heads. This mask is then used to produce a single LLM embedding from value vectors produced from pair embeddings.
+The model can be described by equation \ref{eq:attention-embedding}. $E_s$ is the sample embedding function, $P_{out}$ - final projection module, $K$ - key projection (linear), $V$ - value projection (linear), and $Q$ - query vectors (trainable parameters).
+
+\begin{align}
+\label{eq:attention-embedding}
+    E(S) &= P_{out}(Attention(E_s(S))) \\
+    Attention(X) &= softmax(\frac{Q K^T(X)}{\sqrt{dim(Q)}}) V(X)
+\end{align}
+
+Set aggregator module uses sample embeddings produced by pair encoder, outputting a single LLM embedding vector. In previous embedding models, this step was done by a simple mean computation, instead. Set aggregator uses attention mechanism. Pair embeddings are used to produce key ($K$) and value ($V$) vectors through learnable linear projections. Then, attention masks are computed by a configurable number of attention heads. This mask is then used to produce a single LLM embedding from value vectors produced from pair embeddings.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.7\textwidth]{thesis/diagrams/attention-embedding-pair-encoder.drawio.png}
+    \caption{Attention embedding model - pair encoder module}
+    \label{fig:attention-embedding-pair-encoder}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.7\textwidth]{thesis/diagrams/attention-embedding-set-encoder.drawio.png}
+    \caption{Attention embedding model - set aggregator module}
+    \label{fig:attention-embedding-set-embedding}
+\end{figure}
 
 The model is trained using a supervised contrastive loss. In each batch, multiple embeddings are computed for each model, using different subsets of samples. Loss criterion encourages representations of the same model to be closer to each other than to all other representations. This directly represents the distinguishability requirement - embeddings produced by different subsets of samples from the same LLM should be different than embeddings of other LLMs.
 
 [TODO: formulas]
-
-[TODO: some diagram]
 
 [TODO: results]
 
@@ -556,9 +584,17 @@ A number of fine-tuning methods were implemented. Initially, the easiest approac
     B &\in R^{r \times n}
 \end{align}
 
-\textit{QLoRA} extends \textit{LoRA} method by also introducing model weight quantization. By default, transformer models usually use 16-bit floating point numbers as weights. QLoRA performs 8-bit quantization, followed by a 4-bit quantization using \textit{NormalFloat4} technique [TODO: ref]. \textit{NormalFloat4} encoding is a theoretically optimal way of encoding normally distributed values. While there is no theoretical reason to expect network weights to be normally distributed (although, perhaps, an argument could be made that this expectation is justified by Central Limit Theorem [TODO: ref], treating individual weight updates as random variables), this quantization method does seem effective in practice [TODO: ref]. Only the original model weights are quantized - new, trainable parameters from LoRA matrices retain their full, 16-bit representation. In addition to quantization, QLoRA also implements optimizer state pagination. To avoid out-of-memory issues during training, optimizer parameters (momentum, cache, etc.) that are not in active use are transferred to CPU memory. This results in a time overhead caused by numerous data transfers between GPU and CPU memory, but allows training larger models on a given architecture.
+\textit{QLoRA} extends \textit{LoRA} method by also introducing model weight quantization. By default, transformer models usually use 16-bit floating point numbers as weights. QLoRA performs 8-bit quantization, followed by a 4-bit quantization using \textit{NormalFloat4} technique [TODO: ref]. \textit{NormalFloat4} encoding is a theoretically optimal way of encoding normally distributed values. While there is no theoretical reason to expect network weights to be normally distributed (although, perhaps, an argument could be made that this expectation is justified by Central Limit Theorem [TODO: ref], treating individual weight updates as random variables), this quantization method does seem effective in practice [TODO: ref]. Only the original model weights are quantized - new, trainable parameters from LoRA matrices retain their full, 16-bit representation. In addition to quantization, QLoRA also implements optimizer state pagination. To avoid out-of-memory issues during training, optimizer parameters (momentum, cache, etc.) that are not in active use are transferred to CPU memory. This results in a time overhead caused by numerous data transfers between GPU and CPU memory, but allows training larger models on a given architecture. The comparison of \textit{QLoRA} and other described fine-tuning is shown on figure \ref{fig:fine-tuning-methods-comparison}.
 
-[TODO: Some diagram for QLoRA]
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.7\textwidth]{thesis/diagrams/fine-tuning-metods.png}
+    \caption{Fine-tuning methods comparison}
+    \label{fig:fine-tuning-methods-comparison}
+\end{figure}
+
+% TODO: add source
+% From: https://wandb.ai/sauravmaheshkar/QLoRA/reports/What-is-QLoRA---Vmlldzo2MTI2OTc5
 
 The model is designed to learn most information required for score prediction through fine-tuning. This decision dictates the small size of scoring head module - it's only purpose is to combine LLM embedding vectors (and scalar prompt features, if they turn out to be useful) with prompt embeddings. However, this introduces certain risks. The "path length", or, more formally, number of operations, between prompt text and output is significantly bigger than between other inputs and output. This may cause the model to initially take the path of least resistance, focusing only on LLM embeddings (essentially learning optimal prompt-invariant score for each vector), and discarding prompt embeddings entirely, essentially blocking gradient flow to the transformer module.
 
@@ -580,7 +616,12 @@ Prompt and LLM representations used by response predictive model are the same as
 
 Finding such a representation can be incorporated into the training process. A third module is introduced: response encoder. Given response representation (in format described in section \ref{section:llm-embedding-features}), it learns to produce response embedding vectors.
 
-TODO: diagram
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.5\textwidth]{thesis/diagrams/response-predictive-model.drawio.png}
+    \caption{Response predictive model architecture}
+    \label{fig:response-predictive-arch}
+\end{figure}
 
 Four loss components are combined. First criterion is the same as scoring loss options that are used as in previously described models: either margin ranking loss or Bradley-Terry sigmoid cross-entropy. Second criterion encodes prediction accuracy [TODO: equation]. It encourages predictor module to produce outputs similar to those produced by response encoder. Encoder outputs are treated as constants in this case. Third criterion is the same as second, but treating predictor outputs as constants instead. It instructs response encoder module to produce representations that predictor module is able to predict. Fourth criterion is given by equation [TODO: ref]. It is a KL loss term, encouraging a normalized distribution of response embeddings. In particular, this prevents initial representation collapse to a single value - it is a trivially optimal solution to the second and third loss criterion. Importances of loss criteria are controlled by configurable weights. 
 
@@ -593,9 +634,16 @@ TODO: results
 
 \subsection{Multistage Models}
 
-Models described in this section are focusing on assigning a score based on prompt and LLM information. In some cases, it's possible to at least partially interpret their decisions ([TODO: ref]), but in general this formulation of the task does not require any interpretability. To help with that, model chaining mechanism was introduced. Taking advantage of the fact that scores learned during training are not constrained in any way, given a trained scoring model as "base", another can be fitted on it's errors, attempting to predict the difference between it's predecessor and the true value. Final scores are defined as the sum of both predictions.
+Models described in this section are focusing on assigning a score based on prompt and LLM information. In some cases, it's possible to at least partially interpret their decisions ([TODO: ref]), but in general this formulation of the task does not imply any interpretability. To help with that, model chaining mechanism was introduced. Taking advantage of the fact that scores learned during training are not constrained in any way, given a trained scoring model as "base", another can be fitted on it's errors, attempting to predict the difference between it's predecessor and the true value. Final scores are defined as the sum of both predictions.
 
-Multi-stage models can be especially useful when a prompt-invariant model is used as base. As described in section \ref{section:prompt-invariant-scoring}, optimal score assignment based only on chosen LLM is rather simple. By using such model and training a more complex model to predict prompt-specific differences, we clearly separate accuracy and score contributions based on if prompt information is used.
+We can describe model chaining via equation \ref{equation:model-chaining}. The main interpretability benefit comes from a possibility of constraining input values passed to each model - $I_k$ for a model given by $Score_k$. By gradually extending the set of input components, impact of introduction of each component is clearly visible as an increase in joint model performance quality. 
+
+\begin{equation}
+\label{equation:model-chaining}
+    Score(I) = \sum_k Score_k(I_k), \quad \forall_k I_k \subset I
+\end{equation}
+
+In LLM scoring task, multi-stage models can be especially useful when a prompt-invariant model is used as base. As described in section \ref{section:prompt-invariant-scoring}, optimal score assignment based only on chosen LLM is rather simple. By using such model and training a more complex model to predict prompt-specific differences, we clearly separate accuracy and score contributions that use prompt information from base LLM-only "bias".
 
 An additional advantage of multi-stage approach is faster training. Complex models may take multiple epochs before reaching the optimal prompt-invariant accuracy. If prompt-invariant model is used as base, however, optimal prompt-invariant accuracy is the starting point.
 
@@ -626,6 +674,20 @@ TODO: Tests of all parts of the system, etc.
 \chapter{Conclusion}
 
 TODO
+
+% ------------------------------- BIBLIOGRAPHY ---------------------------
+% LEXICOGRAPHICAL ORDER BY AUTHORS' LAST NAMES
+% FOR AMBITIOUS ONES - USE BIBTEX
+
+
+\begin{thebibliography}{20} % IF YOU HAVE MORE REFERENCES, WRITE THE BIGGER NUMBER
+
+\bibitem[1]{lee2019set} J. Lee, Y. Lee, J. Kim, A. R. Kosiorek, S. Choi, Y. W. Teh, \emph{Set Transformer: A Framework for Attention-based Permutation-Invariant Neural Networks}, Proceedings of the 36th International Conference on Machine Learning (ICML), PMLR 97, 2019.
+\bibitem[2]{zaheer2017deep} M. Zaheer, S. Kottur, S. Ravanbakhsh, B. Poczos, R. R. Salakhutdinov, A. J. Smola, \emph{Deep Sets}, Advances in Neural Information Processing Systems (NeurIPS), vol. 30, 2017.
+
+\end{thebibliography}
+\pagenumbering{gobble}
+\thispagestyle{empty}
 
 % ----------------------- LIST OF SYMBOLS AND ABBREVIATIONS ------------------
 \chapter*{List of symbols and abbreviations}
