@@ -153,9 +153,8 @@
 
 % --------------------- END OF PREAMBLE PART (MOSTLY) --------------------------
 
-
-
-
+\usepackage{algorithm}
+\usepackage{algorithmic}
 
 % -------------------------- USER SETTINGS ---------------------------
 
@@ -522,7 +521,9 @@ The model is trained using a supervised contrastive loss. In each batch, multipl
 
 [TODO: formulas]
 
-[TODO: results]
+\subsubsection{Results}
+
+TODO
 
 \subsection{Prompt-invariant Embedding-based Models}
 \label{section:prompt-invariant-embedding-based-models}
@@ -531,7 +532,9 @@ While distinguishability metric should closely correlate with LLM embedding usef
 
 To validate that hypothesis, gradient boosting model was implemented. The model was trained using margin ranking loss.
 
-[TODO: results]
+\subsubsection{Results}
+
+TODO
 
 \section{Simple Models}
 
@@ -547,7 +550,9 @@ To match the interface of other models described further in this section, whose 
 
 Due to it's convenience, this state reverting mechanism was implemented in all iterative models implemented during this project.
 
-TODO: results
+\subsubsection{Results}
+
+TODO
 
 \subsection{DNN Model}
 \label{section:dnn-model}
@@ -556,13 +561,85 @@ The first deep learning model that was implemented uses a simple multi-layer neu
 
 Three distinct input vectors don't have to share any characteristics, like dimensionality, scale, or importance. For each, a separate projection layer was introduced. These layers transform input vectors into representations of set dimensionality, which subsequently are concatenated and used as input to the following layers of the network.
 
-Number and sizes of hidden layers are configurable. \textit{LeakyReLU} was chosen as the activation function, with negative slope set to $0.1$. Dropout layers were introduced between each pair of hidden layers to prevent overfitting. Additionally, \textit{LayerNorm} layers were introduced for regularization, and gradient clipping was introduced to prevent gradient explosions during training. 
+Number and sizes of hidden layers are configurable. \textit{LeakyReLU} was chosen as the activation function, with negative slope set to $0.1$. Dropout layers were introduced between each pair of hidden layers to prevent overfitting. Additionally, \textit{LayerNorm} layers were introduced for regularization, and gradient clipping was introduced to prevent gradient explosions during training.
 
 The score assignment goal that the network tries to achieve does not inherently require any specific scale of outputs. As scores are only ever used for comparison, transforming them through any strictly increasing function does not change the quality of the result - for each compared pair of models, bigger score will still be bigger after the transformation. This ambiguity is undesired and impractical from human perspective. Introducing a secondary training objective could be a solution to this problem, however it is unnecessary in this case. Instead of introducing an additional loss term, whose influence may negatively impact the primary objective, score post-processing was introduced. After training, mean and standard deviation of scores assigned to training data is computed, such that subsequent inference results can be normalized to mean 0 and standard deviation equal to 1. Additionally, scaled scores are transformed using a scaled hyperbolic tangent function onto a $(-1, 1)$ range.
 
-Two interchangeable loss functions were implemented: margin ranking loss and Bradley-Terry sigmoid cross-entropy loss. Initially, margin ranking loss seemed more favorable - once scores assigned to a given training pair satisfy the comparison with a margin, the pair has no contribution to loss gradients, and therefore model is not encouraged to widen the score gap. Intuitively, this is a desired behavior. Assigning a widely different scores to compared samples is by no means better than keeping their difference small. However, margin ranking loss turned out to under-perform significantly in practice. This observation motivated the implementation of an alternative.
+\subsubsection{\textit{AdamW}}
 
-TODO: results
+\textit{AdamW} optimizer was used during training process. Described by Loshchilov et. al. in \textit{Decoupled Weight Decay Regularization} paper \cite{loshchilov2019adamw}, it improves the previous \textit{Adam} algorithm (Kingma et. al., \textit{Adam: A Method for Stochastic Optimization} \cite{kingma2015adam}) by decoupling weight decay from gradient update step. In \textit{Adam}, L2 regularization is essentially implemented by altering the effective loss criterion which is being minimized. \textit{AdamW} implements weight decay during weight update step instead, as described by equation \ref{equation:adamw-weight-update}. 
+
+\begin{equation}
+\label{equation:adamw-weight-update}
+    \theta_{t+1} = \theta_t - \alpha \frac{\hat{m}_t}{\sqrt{\hat{v}_t} + \epsilon} - \alpha \lambda \theta_t
+\end{equation}
+
+\subsubsection{Residual Connections}
+
+As depth of a dense neural network increases, a problem of vanishing gradient arises. [TODO: reference]. Gradient of early layer weights is a product of activation function gradients and weight values of later layers. Due to regularization and similar mechanisms, these values tend to be smaller than 1 on average, causing gradual decrease in gradient magnitude. To mitigate this issue, residual connections were introduced. Initially described by He et. al. in \textit{Deep Residual Learning for Image Recognition} paper \cite{he2016deep}, residual connections introduce a "skip-path" for each layer. Mathematically, this means that layer input is added to layer output. The modification ensures that early layers have a direct path to network output. As vector addition can only be performed if vectors have the same dimensionality, the implementation of skip connections that relies on adding layer input to output can only be performed for layers that have the same input and output dimension. The mechanism can be easily extended to layers where these dimensions are not equal, though, by introducing a linear projection layer with the same input and output dimensions as the "primary" layer, but without activation functions, normalization layers, and so on. This extension is also described in \textit{Deep Residual Learning for Image Recognition} paper \cite{he2016deep}, in the context of skip connections between CNN layers with different channel counts. The idea can be justified by the fact that application of multiple linear transformations is equivalent to a single linear transformation. In other words, an arbitrary early layer of the network can influence the output through a single linear transformation, which means it receives a clear gradient signal. 
+
+\subsubsection{Loss Functions}
+
+Two interchangeable loss functions were implemented: margin ranking loss (defined by equation \ref{equation:margin-ranking-loss}) and Bradley-Terry sigmoid cross-entropy loss (defined by equation \ref{equation:cross-entropy-loss}). $s_a$ and $s_b$ represent assigned scores, $y \in \{-1, 1\}$ - comparison result, $\sigma$ is the sigmoid function, and $BCE$ is a binary cross-entropy loss function.
+
+\begin{equation}
+\label{equation:margin-ranking-loss}
+    \mathcal{L}_\text{margin ranking}(s_a, s_b, y) = \frac{1}{n}\sum_{i=1}^{n} \max\bigl(0;-y_i(s_{a,i}-s_{b,i}) + m\bigr) 
+\end{equation}
+
+\begin{equation}
+\label{equation:cross-entropy-loss}
+    \mathcal{L}_\text{cross-entropy}(s_a, s_b, y) = \frac{1}{n}\sum_{i=1}^{n} \text{BCE}\left(\sigma(s_{a,i}-s_{b,i}), \frac{y_i+1}{2}\right)
+\end{equation}
+
+Initially, margin ranking loss seemed more favorable - once scores assigned to a given training pair satisfy the comparison with a margin, the pair has no contribution to loss gradients, and therefore model is not encouraged to widen the score gap. Intuitively, this is a desired behavior. Assigning a widely different scores to compared samples is by no means better than keeping their difference small. However, margin ranking loss turned out to under-perform significantly in practice. This observation motivated the implementation of an alternative.
+
+\subsubsection{Metrics}
+\label{section:dnn-model-metrics}
+
+Training process of every machine learning model can be monitored by following two primary metrics: loss function values, which the model is trained to minimize, and accuracy values, which, assuming good design of loss criterion, should increase as loss values decrease. Recording these values after every training epoch for both training and validation sets provides a way to verify if the model is learning correctly, overfits, stagnates, etc.
+
+Although undeniably useful, accuracy and loss values alone are not enough to interpret the behavior of the model and to diagnose it's flaws. A set of additional diagnostic metrics was introduced to help with that. They were chosen specifically to provide information about internal network behavior. The following metrics were defined:
+
+\begin{itemize}
+    \item \textbf{Projection variance and norm} \\
+    Variance and L2 norm of projected values of each input component (outputs of their projection layers) are tracked. Low variance of component projections signifies it's low impact on model output - the network essentially learned to ignore any information that could be contained in that input component. Additionally, relative magnitude of projection norms can provide information about relative impact of different input components on network output. 
+    \item \textbf{Score variance decomposition} \\
+    Variance of assigned scores is decomposed into LLM-specific and prompt-specific components. Decomposition can be described by equation \ref{equation:variance-decomposition} - $s$ represents assigned scores, $\overline{s}_m$ - mean scores of LLMs, and $\Delta s$ - deviations of assigned scores from the average LLM score. If nearly all variance in returned scores can be attributed to LLM differences (or, more specifically, to LLM embeddings), we can conclude that prompt information is essentially ignored. \\
+    \begin{equation}
+    \label{equation:variance-decomposition}
+        Var(s) = Var(\overline{s}_m) + Var(\Delta s)
+    \end{equation}
+    \item \textbf{Input gradient attribution} \\
+    During training, loss criterion gradients are computed with respect to inputs. Dot product of those gradients and input values can be used to measure importance of each input value - described by equation \ref{equation:gradient-attribution}. This metric is especially useful, because it can be computed not only for input components, but also for individual coordinates in a given input component vector. While per-coordinate importances don't make much sense in case of LLM and prompt embeddings, they do provide a lot of information in case of scalar features - features that are not useful for scoring can be easily identified by their low importance. \\
+    \begin{equation}
+    \label{equation:gradient-attribution}
+        Imp(x) = \nabla_x L \cdot x
+    \end{equation}
+\end{itemize}
+
+\subsubsection{Post-training Sensitivity Analysis}
+
+In addition to metrics described in section \ref{section:dnn-model-metrics}, which are computed and tracked per epoch, additional post-training sensitivity metrics were implemented. While the primary goal of previously defined metrics is training process monitoring and diagnosis of certain undesired patterns, post-training metrics described in this section are implemented to provide an interpretation of the scoring behavior of a trained model. While it would be possible to compute these metrics after every epoch as well, to provide an insight into how scoring behavior is changing during training, doing so proved impractical due to relatively high computational cost. Measuring each metric requires at least one additional pass through the training set.
+
+The following sensitivity metrics were implemented:
+
+\begin{itemize}
+    \item \textbf{Prompt sensitivity} \\
+    Prompts are randomly permuted across all samples, and model accuracy is measured. Drop in accuracy can be interpreted as model's sensitivity to prompt information - if the model learned to rely on LLM embeddings, the accuracy won't change significantly, and if the model does consider prompt inputs, the drop will be significant.
+    \item \textbf{Prompt embedding sensitivity} \\
+    Model accuracy is measured after setting all prompt embeddings to their mean across the sample set. Drop in accuracy can be interpreted as model's sensitivity to prompt embeddings, specifically.
+    \item \textbf{Scalar features sensitivity} \\
+    Model accuracy is measured after setting all scalar feature inputs to their mean across the sample set. Drop in accuracy can be interpreted as model's sensitivity to scalar features.
+    \item \textbf{Per-feature sensitivities} \\
+    Model accuracy is measured after randomly permuting values of a single scalar feature across the sample set. Drop in accuracy can be interpreted as model's sensitivity to that feature.
+\end{itemize}
+
+Each metric is computed separately on training and validation sets.
+
+\subsubsection{Results}
+
+TODO
 
 \section{Complex Models}
 
@@ -573,6 +650,10 @@ Sentence encoding transformers are a useful tool that transform text into a fixe
 The core of the transformer model is a pretrained sentence transformer model, which is being fine-tuned during the training process. The output of the transformer model is passed to a scoring head, which consists of a small (configurable) number of dense layers, using \textit{LeakyReLU} activation functions (with negative slope equal to $0.1$) and dropout layers. Scoring head module also takes LLM embeddings and scalar prompt features as inputs (since, naturally, sentence transformer module only takes text as input). These input vectors are initially passed through projection layers, similarly to what is described in \ref{section:dnn-model}.
 
 The core transformer model is loaded from \textit{HuggingFace} using \texttt{sentence-transformers} library. [TODO: something more]. Wide variety of available models make it possible to test different options, with varying parameter counts, output dimensionalities, and architectures.
+
+The same loss functions were implemented as in previously described models (in section \ref{section:dnn-model}). Furthermore, the same arguments prompted the decision to leave score values unconstrained during training, adding normalization and hyperbolic tangent transformation as a post-processing step, instead. Transformer model also uses the same state reverting mechanism, preventing loss of quality due to overfitting. Additionally, since training process of this model is significantly more time-consuming, checkpointing was implemented, saving model state every few epochs, which proved useful in case of crashes during training (mostly due to out-of-memory errors).
+
+\subsubsection{Fine-tuning Methods}
 
 A number of fine-tuning methods were implemented. Initially, the easiest approach involved simply unfreezing $n$ final layers of the model. This turned out to produce terrible results, while also not reducing the number of trainable parameters enough. [TODO: something more]. \textit{LoRA} and \textit{QLoRA} methods were implemented as alternatives. The main idea behind \textit{LoRA} (or \textit{Low Rank Adaptation}) is the introduction of a smaller number of new, trainable parameters, while keeping original model weights frozen. Effective, altered model weights are computed according to equation \ref{eq:lora}, where $r$ is a configurable rank of the transformation. [TODO: ref + some justification?]
 
@@ -596,15 +677,58 @@ A number of fine-tuning methods were implemented. Initially, the easiest approac
 % TODO: add source
 % From: https://wandb.ai/sauravmaheshkar/QLoRA/reports/What-is-QLoRA---Vmlldzo2MTI2OTc5
 
+\subsubsection{Interaction Features}
+
 The model is designed to learn most information required for score prediction through fine-tuning. This decision dictates the small size of scoring head module - it's only purpose is to combine LLM embedding vectors (and scalar prompt features, if they turn out to be useful) with prompt embeddings. However, this introduces certain risks. The "path length", or, more formally, number of operations, between prompt text and output is significantly bigger than between other inputs and output. This may cause the model to initially take the path of least resistance, focusing only on LLM embeddings (essentially learning optimal prompt-invariant score for each vector), and discarding prompt embeddings entirely, essentially blocking gradient flow to the transformer module.
 
 To address this issue, simple concatenation of projections of scoring head input vectors was replaced by another combining operation. The goal is to discourage the model from learning scores that depend only on LLM embeddings, and instead encourage it to produce scores based on certain interactions between prompt representation and LLM embedding. To encode that interaction, scalar product was used. Scoring head module takes as input the scalar product of LLM embedding projection, and concatenated prompt embedding and scalar prompt features projections. As scalar product requires arguments to be of the same dimensionality, projection layer sizes were adjusted. Size of scalar features projection is configurable, with prompt embedding projection being twice as big, and LLM embedding projection - three times as big.
 
 Of course, this approach does not guarantee that the model cannot ignore prompts. [TODO: handle zeroing prompt text input while keeping prompt features input]. To achieve that, while retaining LLM embedding information, transformer module would need to learn to output a constant, non-zero vector for every prompt. Importantly, though, this state doesn't block the gradient flow to transformer module - even if the model initially does learn to ignore prompt information, it should, theoretically, be able to continue learning prompt-specific relationships after reaching optimal prompt-invariant scoring accuracy.
 
-The same loss functions were implemented as in previously described models (in section \ref{section:dnn-model}). Furthermore, the same arguments prompted the decision to leave score values unconstrained during training, adding normalization and hyperbolic tangent transformation as a post-processing step, instead. Transformer model also uses the same state reverting mechanism, preventing loss of quality due to overfitting. Additionally, since training process of this model is significantly more time-consuming, checkpointing was implemented, saving model state every few epochs, which proved useful in case of crashes during training (mostly due to out-of-memory errors).
+\subsubsection{Loss Functions}
 
-TODO: Results
+The model uses the same two ranking loss function variants as dense network model (in section \ref{section:dnn-model}) - margin ranking loss, and Bradley-Terry cross-entropy loss.
+
+\subsubsection{Metrics}
+
+The same diagnostic metrics were introduced as in dense network model. As fine-tuned transformer module takes text as input, gradient attribution is computed for prompt embedding vectors that it outputs.
+
+Additionally, a new metric was introduced: module gradient norms. While dense network model consists of a single main component (dense network) and input projection layers, there are two high-parameter, trainable modules in transformer model - the actual sentence transformer being fine-tuned, and scoring head (dense network). By computing and recording norms of gradients of parameters of each module, it's possible to validate that both keep learning. For example, if the model learns to rely only on LLM embeddings, ignoring prompt information, transformer module gradient norms will significantly decrease relatively to scoring head gradient norms.
+
+\subsubsection{\textit{Muon} optimizer}
+
+Instead of \textit{AdamW} optimizer, which was used for dense network model training, transformer model uses \textit{Muon} optimizer. Introduced by Jordan et. al. in an article titled \textit{Muon: An Optimizer for Hidden Layers in Neural Networks} \cite{jordan2024muon}, and later evaluated in context of LLM training by Liu et. al. in \textit{Muon is Scalable for LLM Training} paper \cite{liu2025muonscalable}, \textit{Muon} changes how momentum influences weight updates. While \textit{AdamW} only uses element-wise operations to update weights, \textit{Muon} exploits the matrix structure of most network parameters.  
+
+Algorithm \ref{algorithm:muon} describes weight update process. After gradient is computed and momentum is updated, orthogonalization is performed on the result by computing a polar factor $X = U V^T$, from singular value decomposition $M = (U V^T)(V \Sigma V^T)$. The result $X$ is a semi-orthogonal matrix, which captures the direction of required weight updates while normalizing the magnitude. This step effectively replaces the per-element second moment estimate ($\hat{v}_t$) normalization in \textit{AdamW} algorithm. Additionally, resulting matrix $X$ has all singular values equal to 1, so weight update $O_t$ has a bounded spectral norm regardless of how large the gradient was. This means that orthogonalization acts as implicit regularization.
+
+Before orthogonalization is performed, Nesterov lookahead momentum correction is applied (Y. Nesterov, \textit{Introductory Lectures on Convex Optimization: A Basic Course} \cite{nesterov2004introductory}). As magnitude information is discarded, direction accuracy becomes more important, making the correction more important compared to previous optimizing algorithms, like \textit{Adam}.
+
+Orthogonalization is performed using Newton-Schulz iterative method. It is an approximate, inversion-free alternative to computationally expensive exact singular value decomposition methods. 
+
+\begin{algorithm}[h]
+\caption{Muon optimizer (for 2D hidden-layer parameters)}
+\label{algorithm:muon}
+\begin{algorithmic}[1]
+\REQUIRE learning rate $\eta$, momentum $\mu$, weight decay $\lambda$, NS steps $K=5$, NS coefficients $(a,b,c)$
+\STATE Initialize momentum buffer $M_0 \gets 0$
+\FOR{$t = 1, 2, \ldots$}
+    \STATE $G_t \gets \nabla_\theta \mathcal{L}(\theta_{t-1})$ \hfill \COMMENT{compute gradient}
+    \STATE $M_t \gets \mu \, M_{t-1} + G_t$ \hfill \COMMENT{momentum accumulation}
+    \STATE $\hat{M}_t \gets M_t + \mu \, (M_t - M_{t-1})$ \hfill \COMMENT{Nesterov lookahead (optional)}
+    \STATE $X \gets \hat{M}_t$ \hfill \COMMENT{begin Newton--Schulz orthogonalization}
+    \STATE $X \gets X \,/\, \|X\|_F$ \hfill \COMMENT{normalize for NS convergence}
+    \FOR{$k = 1, \ldots, K$}
+        \STATE $X \gets a X + b (X X^\top) X + c (X X^\top)^2 X$
+    \ENDFOR
+    \STATE $O_t \gets X$ \hfill \COMMENT{$O_t \approx U V^\top$ from polar decomposition of $\hat{M}_t$}
+    \STATE $\theta_t \gets \theta_{t-1} - \eta \, O_t - \eta \lambda \, \theta_{t-1}$ \hfill \COMMENT{update with decoupled weight decay}
+\ENDFOR
+\end{algorithmic}
+\end{algorithm}
+
+\subsubsection{Results}
+
+TODO
 
 \subsection{Response Predictive Model}
 
@@ -623,14 +747,72 @@ Finding such a representation can be incorporated into the training process. A t
     \label{fig:response-predictive-arch}
 \end{figure}
 
-Four loss components are combined. First criterion is the same as scoring loss options that are used as in previously described models: either margin ranking loss or Bradley-Terry sigmoid cross-entropy. Second criterion encodes prediction accuracy [TODO: equation]. It encourages predictor module to produce outputs similar to those produced by response encoder. Encoder outputs are treated as constants in this case. Third criterion is the same as second, but treating predictor outputs as constants instead. It instructs response encoder module to produce representations that predictor module is able to predict. Fourth criterion is given by equation [TODO: ref]. It is a KL loss term, encouraging a normalized distribution of response embeddings. In particular, this prevents initial representation collapse to a single value - it is a trivially optimal solution to the second and third loss criterion. Importances of loss criteria are controlled by configurable weights. 
-
-[TODO: Change `real\_repr` mixing]
 Importantly, predictor and response encoder operate on different inputs. Response encoder has access only to real LLM response representations, while predictor has no information about them. As responses are not available during inference, response encoder is not used in that case. It's purpose is to help in discovering response representations that can be useful for scoring. Having access to actual responses, finding such embeddings should be much easier.
 
-Modular structure of response predictive model makes it more interpretable than most other models, which usually function as black-box predictors. Each of the three modules has it's separate role, making it easy to measure the quality with which it performs it's task. In particular, we can decouple prediction errors from representation and scorer errors, by comparing scoring accuracy when response embeddings are predicted, with scoring accuracy using real response embeddings. Similarly, predictor quality can be tracked by measuring common regression metrics, like mean squared error or cosine similarity, and by comparing distributions of real and predicted embeddings - ideally, if predictor and encoder modules find some representation equilibrium, distribution should be similar.  
+Modular structure of response predictive model makes it more interpretable than most other models, which usually function as black-box predictors. Each of the three modules has it's separate role, making it easy to measure the quality with which it performs it's task. In particular, we can decouple prediction errors from representation and scorer errors, by comparing scoring accuracy when response embeddings are predicted, with scoring accuracy using real response embeddings. Similarly, predictor quality can be tracked by measuring common regression metrics, like mean squared error or cosine similarity, and by comparing distributions of real and predicted embeddings - ideally, if predictor and encoder modules find some representation equilibrium, distribution should be similar.
 
-TODO: results
+\subsubsection{Loss Function}
+
+Due to relative complexity of training process of response predictive model, it requires a more complex loss function design than other models. Using a simpler design (i.e. just ranking loss) ultimately leads to a "collapse" to a simpler, locally optimal state. For example, if no effort is made to ensure predicted and encoded representations are similar, scoring module can just learn to treat both types of representations differently. 
+
+Four loss components are combined, according to equation \ref{equation:response-predictive-loss}. Weights $k_\text{pred}$, $k_\text{repr}$ and $k_\text{KL}$ are configurable.
+
+\begin{align}
+\label{equation:response-predictive-loss}
+    \mathcal{L}_\text{response predictive} = \mathcal{L}_\text{rank} & + k_\text{pred} \mathcal{L}_\text{pred} + w(n_\text{epoch}) k_\text{repr} \mathcal{L}_\text{repr} + \\
+    + k_\text{anchor} \mathcal{L}_\text{anchor} & + k_\text{consistency} \mathcal{L}_\text{consistency} + k_\text{dist} \mathcal{L}_\text{dist}
+\end{align}
+
+First criterion is ranking loss. Two interchangeable ranking loss options were defined, the same as in previously described models: margin ranking loss (equation\ref{equation:margin-ranking-loss}) and Bradley-Terry sigmoid cross-entropy (equation \ref{equation:cross-entropy-loss}). Loss criterion is computed not only using predictor module flow (where response representations are predicted), but also through encoder flow, using real responses as input.
+
+Second criterion encodes prediction accuracy. It encourages predictor module to produce outputs similar to those produced by response encoder. Encoder outputs are treated as constants in this case - gradients are computed only with respect to predictor weights. Third criterion is the same as second, but treating predictor outputs as constants instead. It instructs response encoder module to produce representations that predictor module is able to predict. Three interchangeable variants were defined for this loss component: MSE (equation \ref{equation:mse-loss}), cosine similarity (equation \ref{equation:cosine-similarity-loss}) and Huber L1 criterion (equation \ref{equation:huber-l1-loss}). $\hat{r}$ represents predicted response representations, and $r$ - encoded response representations. The sum in Huber criterion iterates over response vector components. 
+
+\begin{equation}
+\label{equation:mse-loss}
+    \mathcal{L}_\text{MSE} = \frac{1}{n} \sum_{i=1}^{n} \bigl|\hat{r}_{i} - r_{i}\bigr|^2
+\end{equation}
+
+\begin{equation}
+\label{equation:cosine-similarity-loss}
+    \mathcal{L}_\text{cosine} = \frac{1}{n} \sum_{i=1}^{n} \bigl(1 - \frac{\hat{r}_i \cdot r_i}{|\hat{r}_i| |r_i|}\bigr)
+\end{equation}
+
+\begin{equation}
+\label{equation:huber-l1-loss}
+    \mathcal{L}_\text{huber} = \frac{1}{d_r}\sum_{j=1}^{d_r} \\
+    \begin{cases} 
+        \tfrac{1}{2} (\hat{r}_{i,j} - r_{i,j})^2 & |\hat{r}_{i,j} - r_{i,j}| \le 1 \\
+        |\hat{r}_{i,j} - r_{i,j}| - \tfrac{1}{2} & \text{otherwise} 
+    \end{cases} 
+\end{equation}
+
+Predictor loss component is additionally weighted by function $w(n) = \max(1, \frac{n}{n_w})$, where $n$ is the current epoch number. At the beginning of training, response representations produced by predictor module are highly random. There's no point in training response encoder to produce outputs that are similar to such random noise. $w(n)$ gradually ramps up the importance of that loss criterion as training progresses and predictor starts learning. 
+
+Fourth criterion is given by equation \ref{equation:kl-anchor-loss}. It is a KL loss term, encouraging a normalized distribution of response embeddings. In particular, this prevents initial representation collapse to a single value - it is a trivially optimal solution to the second and third loss criterion. Importances of loss criteria are controlled by configurable weights. [TODO: cite something + explain]
+
+\begin{equation}
+\label{equation:kl-anchor-loss}
+    \mathcal{L}_\text{anchor} = \frac{1}{d_r}\sum_{j=1}^{d_r} \frac{1}{2}\left(\sigma_j^2 + \mu_j^2 - 1 - \ln\sigma_j^2\right) 
+\end{equation}
+
+Fifth criterion is given by equation \ref{equation:score-consistency-loss}. It encourages both encoder and predictor to produce representations that would be scored similarly by the scorer model.
+
+\begin{equation}
+\label{equation:score-consistency-loss}
+    \mathcal{L}_\text{consistency} = \frac{1}{n} \sum_{i=0}^{n} (Score(\hat{r}_i) - Score(r_i))^2
+\end{equation}
+
+Last criterion is given by equation \ref{equation:distribution-loss}. It is a sum of Jeffrey's divergences between encoded and predicted values of each response representation component. [TODO: cite something + explain]
+
+\begin{align}
+\label{equation:distribution-loss}
+    \text{KL}\bigl(\mathcal{N}(\mu_1,\sigma_1^2)|\mathcal{N}(\mu_2,\sigma_2^2)\bigr) & = \frac{1}{2}\left(\frac{\sigma_1^2}{\sigma_2^2} + \frac{(\mu_1-\mu_2)^2}{\sigma_2^2} - 1 + \ln\frac{\sigma_2^2}{\sigma_1^2}\right) \\
+    \mathcal{L}_\text{dist} & = \frac{1}{d_r} \sum_{i=1}^{d_r} \frac{\text{KL}(\hat p_j | p_j)+\text{KL}(p_j| \hat p_j)}{2}
+\end{align}
+
+\subsubsection{Results}
+
+TODO
 
 \subsection{Multistage Models}
 
@@ -652,6 +834,8 @@ TODO: results
 \chapter{Response Length Prediction}
 
 TODO: Should it be a separate chapter?
+
+While predicting how well different LLM models can handle a given prompt is the most important part of the LLM selection process, there is a second unknown quantity that influences the choice: response length. While pricing rules of LLM requests are usually clear, cost dependence on response token count makes it impossible to accurately calculate the cost of a given request beforehand. Generally, this isn't a significant problem - output tokens are relatively cheap, especially in the context of requests including images and files in the input. TODO: Continue
 
 \section{Input and Output Data}
 
@@ -684,6 +868,12 @@ TODO
 
 \bibitem[1]{lee2019set} J. Lee, Y. Lee, J. Kim, A. R. Kosiorek, S. Choi, Y. W. Teh, \emph{Set Transformer: A Framework for Attention-based Permutation-Invariant Neural Networks}, Proceedings of the 36th International Conference on Machine Learning (ICML), PMLR 97, 2019.
 \bibitem[2]{zaheer2017deep} M. Zaheer, S. Kottur, S. Ravanbakhsh, B. Poczos, R. R. Salakhutdinov, A. J. Smola, \emph{Deep Sets}, Advances in Neural Information Processing Systems (NeurIPS), vol. 30, 2017.
+\bibitem[3]{he2016deep} K.~He, X.~Zhang, S.~Ren, J.~Sun, \emph{Deep Residual Learning for Image Recognition}, IEEE Conference on Computer Vision and Pattern Recognition (CVPR), 2016.
+\bibitem[4]{loshchilov2019adamw} I.~Loshchilov, F.~Hutter, \emph{Decoupled Weight Decay Regularization}, International Conference on Learning Representations, 2019.
+\bibitem[5]{kingma2015adam} D.~P.~Kingma, J.~Ba, \emph{Adam: A Method for Stochastic Optimization}, International Conference on Learning Representations, 2015.
+\bibitem[6]{jordan2024muon} K.~Jordan, Y.~Jin, V.~Boza, J.~You, F.~Cesista, L.~Newhouse, J.~Bernstein, \emph{Muon: An Optimizer for Hidden Layers in Neural Networks}, 2024, \url{https://kellerjordan.github.io/posts/muon/}.
+\bibitem[7]{liu2025muonscalable} J.~Liu, J.~Su, X.~Yao, Z.~Jiang, G.~Lai, Y.~Du, Y.~Qin, W.~Xu, E.~Lu, J.~Yan, \emph{Muon is Scalable for LLM Training}, arXiv preprint arXiv:2502.16982, 2025.
+\bibitem[8]{nesterov2004introductory} Y.~Nesterov, \emph{Introductory Lectures on Convex Optimization: A Basic Course}, Springer, 2004.
 
 \end{thebibliography}
 \pagenumbering{gobble}
