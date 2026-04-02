@@ -278,8 +278,119 @@ TODO: What did I decide to do? What constraints did I settle on?
 
 \chapter{Description of the System}
 
-TODO: Description of system components, communication, etc.
-TODO: Also include model selection based on price and score.
+The system was implemented as a REST API application, which allows users to create a task, monitor it's state, and receive the result. [TODO: update?] For simplicity, no UI was implemented - the system can be controlled by manual HTTP requests instead. While implementing a user-friendly interface would be an improvement, it isn't too interesting in the context of the problem, while relative simplicity of implemented operations makes it not required for testing and demonstration purposes.
+
+\section{API Interface}
+
+In it's essence, the task completion process is very simple from user perspective. The only information that needs to be provided by the user is the task prompt, and files required for task completion. These actions were implemented as two \texttt{POST} endpoints. Supplementary \texttt{GET} endpoints on the same routes make it possible to inspect the state of running and completed tasks, completing the minimal API design required for task execution.
+
+In practice, a few additional endpoints are required. The following routes were implemented:
+
+\begin{itemize}
+    \item \texttt{/tasks}: Creating new task, inspecting existing tasks;
+    \item \texttt{/files}: Uploading a file with metadata, inspecting uploaded files;
+    \item \texttt{/sse/events}: SSE event stream (described in section \ref{section:async-processing});
+    \item \texttt{/allowed-models}: Setting a list of allowed LLMs for step completion (described in section \ref{section:model-restriction}).
+\end{itemize}
+
+Presented list does not describe all endpoints that were implemented. Routes not directly related to task completion, related to API key management etc., were omitted for brevity.
+
+\section{Task Execution Process}
+
+[TODO: diagram]
+
+Diagram [TODO: ref] provides a high-level overview. Task completion process starts with user \textit{POST} request to \texttt{/tasks}, specifying the prompt, and a list of uploaded files that are required to successfully complete the task. Subsequently, step list is created based on the prompt. Steps are completed in order, based on dependencies between them. For each, a different LLM is selected to complete it, based on the prompt and estimated request cost (described in section \ref{section:llm-selection}). Some steps may define a planned re-evaluation point, in which case remaining step list is updated, based on the result of already completed steps. The same happens if step completion fails (section \ref{section:error-recovery}). Finally, the last step produces a text output, which is returned as the result of the task.
+
+\subsection{Planning and Reevaluation}
+
+TODO: some references etc.
+
+Producing a set of steps required for completion of a given task can be very easily framed as a text processing task requiring a certain level of intelligence and reasoning. Therefore, the simplest solution to that problem is just using a sufficiently good, commercial LLM. While using a high-end LLM model may seem contradictory to the objective of reducing task completion cost, the decision is justified by the fact that step planning prompt is relatively short (compared to step prompts, which may contain much more information), and that the request doesn't contain any input images or files, which cause a dominant contribution to request cost. Planning shouldn't require too extensive reasoning, either, as the actual complex task completion work should be performed when steps are executed.
+
+In initial planning request, the prompt contains task description specified by the user, along with a list of metadata of files attached to the task - their names, types, and user-specified descriptions. In case of reevaluation, outputs of already completed steps are also specified, along with failure reason of the task whose execution failed, if reevaluation was triggered by step failure. Requested output format is a JSON list of step definitions. Each step definition specifies a prompt, previous steps that it depends on (and whose outputs will be included when that step is processed), required files, and required LLM capabilities.
+
+Requested output specifies a number of constraints that LLM response must satisfy, both defined by the format (JSON schema), and by semantic rules (step dependency graph must be acyclic, etc.). These constraints are validated when response is received. If the format is not correct, task status is set to failed and processing stops. While a retry mechanism could be easily implemented, it turned out to be unnecessary - modern commercial LLMs seem to be sufficiently capable of producing a structured output that follows such rules, making failures during planning step extremely rare.
+
+\subsubsection{LLM Capabilities}
+
+Different LLMs support different mechanisms and options - some allow image input, others implement native web search, etc. Those "hard" capabilities of models may be crucial for completion of certain steps, so they can be specified in step definition by planning model. Often, those capabilities serve as filters - if a step requires certain mechanisms or input modalities, LLMs that don't implement them cannot be used to complete that step. That's not always the case, though. \textit{OpenRouter} implements a range of simple options available regardless of requested model, which can serve as replacements for mechanisms that are not supported by a given LLM. These include PDF processing options, prompt-based web search, etc. If such capabilities are required by step definition, they don't cause any models to be filtered out, but instead cause a specific option to be included in the request, specifying usage of a certain mechanism.
+
+The following capabilities are implemented:
+
+\begin{itemize}
+    \item \textbf{Reasoning}: requires an LLM that supports reasoning to be used, and requests medium-effort reasoning during step completion; 
+    \item \textbf{EXA web search}: requests usage of prompt-based EXA web search during step completion;
+    \item \textbf{Native web search}: requests usage of LLMs that support native web search (i.e. \textit{Gemini} and \textit{Perplexity} models); 
+    \item \textbf{OCR PDF processing}: specifies that attached PDF files should be processed via OCR, using an \textit{OpenRouter}-managed mechanism;
+    \item \textbf{Text-based PDF processing}: specifies that attached PDF files should be processed by simply extracting included text;
+    \item \textbf{Native PDF processing}: requires usage of models that accept PDF as native model input;
+    \item \textbf{Input modalities}: requires usage of models whose input modalities cover all types of attached files (implicitly specified by a list of files required for step completion).
+\end{itemize}
+
+\section{File Handling}
+
+Files are uploaded independently from tasks. During upload, in addition to file contents and standard file upload metadata, request specifies declared content MIME type, optional description, and optional user-specified metadata.
+
+The upload is followed by type-specific preprocessing. This step performs required type conversions, text extraction, and metadata computation. Text extraction is performed for supported Office XML formats (\texttt{.xlsx}, \texttt{.docx}) - as most LLMs don't support these formats as input, such files are converted to text using \texttt{docx} and \texttt{openpyxl} packages. 
+
+As for metadata computation, the most important computed value is token count of text data. Depending on the format, text-based files are either priced as input tokens (i.e. PDFs if text-based processing is selected), or simply included in the prompt (i.e. plain-text or markdown files). This means that knowing the token count of their contents is required for accurate request cost prediction (described in detail in section \ref{section:cost-estimation}).
+
+Computed metadata are appended to user-specified additional metadata. Finally, the file is saved to disk, (encoded as Base64 for security), and metadata is stored in the database.
+
+In addition to actual files, system supports registering file URLs. LLMs generally allow to specify URLs as input in case of images, video, audio, and PDF files, so supporting this format in the system was a natural consequence. URL registration process is analogous to file upload, with exception of metadata computation. In this case, as file contents aren't available, data required for cost estimation is expected to be provided by the user in additional metadata.
+
+The following file types are supported:
+
+\begin{itemize}
+    \item Image: \texttt{PNG}, \texttt{JPEG}, \texttt{GIF}, \texttt{WebP};
+    \item Video: \texttt{MP4}, \texttt{MOV}, \texttt{MPEG}, \texttt{WebM};
+    \item Audio: \texttt{MP3}, \texttt{MPEG}, \texttt{WAV};
+    \item PDF files;
+    \item Office formats: \texttt{XLSX}, \texttt{DOCX};
+    \item JSON files;
+    \item All text-based formats: MIME types starting with \texttt{text/} prefix;
+\end{itemize}
+
+\section{Asynchronous Processing}
+\label{section:async-processing}
+
+Task processing, as pretty much any operation that uses LLMs, is naturally an asynchronous process. LLM requests take several seconds to complete, which means that complex multi-step tasks may take multiple minutes to finish. Design of the system reflects such nature of the problem.
+
+\texttt{POST /tasks} endpoint implements a common convention for long-running operations, returning \texttt{202 Accepted} immediately, rather than waiting for task to complete before returning a response. 
+
+Step completion is implemented using a work item queue, with state saved in the database. When new task is created, initial planning step is added to the queue. Subsequently, when any step is completed, all task steps for which all predecessors were completed are added to the queue, ensuring that task execution continues. This design ensures that the execution is resumable when system is restarted, while also making process thread count independent from the number of running tasks.
+
+\subsubsection{SSE}
+
+HTTP communication is asymmetric by design - it always starts with a request from the client, which the server handles, returning a response. This property makes dealing with long-running asynchronous processes inconvenient - the only way for the client to wait for an operation to complete is to use a pooling loop, checking the state every so often. This problem can be quite easily solved by implementing a non-HTTP notification mechanism (i.e. WebSockets [TODO: ref]). However, a simpler solution exists: Server-Sent Events [TODO: ref]. SSE stream utilizes HTTP for server-sent notifications, by simply keeping the HTTP connection open, writing each event data as a JSON line. While not aligning with HTTP design, this mechanism provides a simple alternative to pooling or using additional connection protocols.
+
+The system exposes an SSE endpoint at \texttt{/sse/events}. Events are produced when task state is updated in any way (step is completed, step list is generated, task finishes, etc.). Additionally, metadata filtering is implemented, making it possible to request only a certain subset of emitted events - for example, only those related to a particular task.
+
+\section{Error Recovery}
+\label{section:error-recovery}
+
+LLM-based operations require a relatively extensible error handling. First, regardless of format schemas and specifications, LLM output should be treated as text, which may or may not satisfy requested constraints. Failed format validation during step execution causes the step to be failed, triggering a reevaluation step. 
+
+Second, LLM may simply be unable to complete a step. Steps, just like tasks, aren't constrained in any way, and may specify problems that are extremely hard to solve, or which don't make sense after acquiring certain information from previous steps output or file contents. A plan for a certain mathematical task may contain a step requiring a proof of Riemann Hypothesis. Image recognition task may specify a step requiring a model to determine a scientific name of the highest tree on an attached photo, while the photo does not contain any trees. To solve this problem, step output schema specifies a "failure reason" field, and LLM that executes the step is instructed to use it if the step cannot be completed to specify the problem. Failed step subsequently causes reevaluation to be performed. Reevaluation prompt contains the failure reason, making it possible to plan subsequent steps in a way that solves the problem.
+
+\section{LLM Selection}
+\label{section:llm-selection}
+
+Each step requires different LLM capabilities and input modalities to be completed. In addition to these constraints, each viable LLM has different strengths and weaknesses, as well as a different request cost. The goal of LLM selection for a given step is choosing an LLM which satisfies all input modality and capability constraints, while maximizing a certain utility function, combining cost minimization requirement with maximizing prompt-specific expected response quality score.
+
+Ensuring that chosen LLM satisfies input modality and capability constraints is done by simply filtering the list of available models based on their metadata. If no model satisfies these constraints, step is failed with a descriptive reason, and reevaluation is triggered.
+
+The choice of utility function defines the behavior of the system. TODO: continue
+
+\subsection{Cost Estimation}
+\label{section:cost-estimation}
+
+TODO
+
+\subsection{Selection Restrictions}
+\label{section:model-restriction}
+
+TODO
 
 \chapter{Scoring}
 
