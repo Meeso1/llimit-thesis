@@ -295,11 +295,28 @@ In practice, a few additional endpoints are required. The following routes were 
 
 Presented list does not describe all endpoints that were implemented. Routes not directly related to task completion, related to API key management etc., were omitted for brevity.
 
+\subsection{Security}
+
+The system uses API key authentication. Every request requires the key to be present in \texttt{Authentication} HTTP header, validating access rights, and allowing for attribution of the request to the user whose API key was used. The API exposes a set of API key management endpoints under \texttt{/api-keys} route, allowing for listing names of existing API keys, creating new keys, and deleting them.
+
+\section{LLM integration}
+
+[TODO: add some reference] Integration with LLM providers is a central part of the project. Contemporary commercial LLM landscape features a high number of providers, each offering a selection of models. While certain conventions exist (for example, \texttt{openai} integration packages for various programming languages are widely adopted by different providers, offering compatible API interface), they cover only a part of functionality required by the system. While chat and one-shot completion APIs are standardized, aspects like per-request configuration or pricing information are not.
+
+This problem is solved by \textit{OpenRouter}. \textit{OpenRouter} is an LLM gateway, offering unified API access (compatible with \texttt{openai} interface), request configuration, LLM description listing, and pricing information. This effectively means that instead of requiring a separate integration for each supported LLM provider, only a single implementation is required, drastically reducing complexity.
+
+Usage of \textit{OpenRouter} also simplifies API key management. In case of direct integrations, a separate API key would be required for each supported provider. Instead, a single \textit{OpenRouter} API key can be used for all LLM requests. This simplification makes it possible to skip implementation of API key management services in the system altogether, instead requiring the API key to be included in API requests that require LLM usage, never saving it to a persistent location server-side.
+
 \section{Task Execution Process}
 
-[TODO: diagram]
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.7\textwidth]{thesis/diagrams/task-execution.drawio.png}
+    \caption{Task execution flow}
+    \label{fig:task-execution-flow}
+\end{figure}
 
-Diagram [TODO: ref] provides a high-level overview. Task completion process starts with user \textit{POST} request to \texttt{/tasks}, specifying the prompt, and a list of uploaded files that are required to successfully complete the task. Subsequently, step list is created based on the prompt. Steps are completed in order, based on dependencies between them. For each, a different LLM is selected to complete it, based on the prompt and estimated request cost (described in section \ref{section:llm-selection}). Some steps may define a planned re-evaluation point, in which case remaining step list is updated, based on the result of already completed steps. The same happens if step completion fails (section \ref{section:error-recovery}). Finally, the last step produces a text output, which is returned as the result of the task.
+Diagram \ref{fig:task-execution-flow} provides a high-level overview. Task completion process starts with user \textit{POST} request to \texttt{/tasks}, specifying the prompt, and a list of uploaded files that are required to successfully complete the task. Subsequently, step list is created based on the prompt. Steps are completed in order, based on dependencies between them. For each, a different LLM is selected to complete it, based on the prompt and estimated request cost (described in section \ref{section:llm-selection}). Some steps may define a planned re-evaluation point, in which case remaining step list is updated, based on the result of already completed steps. The same happens if step completion fails (section \ref{section:error-recovery}). Finally, the last step produces a text output, which is returned as the result of the task.
 
 \subsection{Planning and Reevaluation}
 
@@ -380,17 +397,83 @@ Each step requires different LLM capabilities and input modalities to be complet
 
 Ensuring that chosen LLM satisfies input modality and capability constraints is done by simply filtering the list of available models based on their metadata. If no model satisfies these constraints, step is failed with a descriptive reason, and reevaluation is triggered.
 
-The choice of utility function defines the behavior of the system. TODO: continue
+The choice of utility function defines the behavior of the system. For example, higher emphasis on predicted quality score will cause the system to favor LLMs which receive higher scores, regardless of estimated cost. Despite it's importance, there is no obvious criterion that can be used to determine it's quality. Fundamentally, quantities that the utility function balances aren't comparable. While it would be possible to construct some arbitrary metric and find an utility function that is the best according to that metric, there's no good reason to consider such process to be better than specifying chosen utility function directly - in principle, for any utility function it would be possible to choose such a fitness metric that chosen utility function fits the constraint the best.
+
+Due to aforementioned reason, utility function was chosen explicitly. In practice, while the choice is important, it does not impact the implementation and design of other parts of the system - if necessary, changing utility function is extremely simple.
+
+Chosen metric is described by equation \ref{equation:model-selection-utility-function}. $S$ and $C$ represent predicted quality score and estimated request cost, normalized to mean 0 and standard deviation equal to 1 across all LLMs that satisfy capability and input modality constraints. $\lambda$, $k_c$, $k_s$, $\tau_c$, $\tau_s$ are parameters.
+
+\begin{equation}
+\label{equation:model-selection-utility-function}
+    U(C, S) = S - C - \lambda \, \operatorname{softplus}\bigl(k_c(C - \tau_c)\bigr) - \lambda \, \operatorname{softplus}\bigl(k_s(-S - \tau_s)\bigr)
+\end{equation}
+
+The main utility criterion is defined by $S-C$ term - relative score difference from the mean is treated equally to relative cost difference. Subsequent $\operatorname{softplus}$ terms discourage the choice of LLMs with extremely bad score regardless of the cost, and extremely expensive LLMs regardless of the score. $\lambda$ defines the strength of penalty terms, $\tau_c$ and $\tau_s$ - extreme value cutoffs (in standard deviations, since $S$ and $C$ are normalized), $k_c$ and $k_s$ - steepness of penalty values past the cutoff. [TODO: update utility function in code]
+
+The following parameter values were chosen:
+
+\begin{itemize}
+    \item $\lambda = 5$,
+    \item $k_c = k_s = 3$,
+    \item $\tau_c = \tau_s = 2$
+\end{itemize}
+
+Figure \ref{fig:utility-function-plot} shows values of chosen utility function for normalized score and cost values between $-4$ and $4$. Introduction of softplus penalty terms produces steep negative slopes where cost or score values are too unfavorable.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.7\textwidth]{thesis/plots/utility_3d_plot.png}
+    \caption{Utility function values}
+    \label{fig:utility-function-plot}
+\end{figure}
 
 \subsection{Cost Estimation}
 \label{section:cost-estimation}
 
-TODO
+Estimating the cost of LLM request is relatively simple due to well documented pricing rules exposed by \textit{OpenRouter} API, save for a few problematic aspects. In implemented system, request cost consists of the following components:
+
+\begin{itemize}
+    \item Input tokens,
+    \item Output tokens,
+    \item Reasoning tokens,
+    \item Web search,
+    \item Files.
+\end{itemize}
+
+\subsubsection{Input Tokens}
+
+Cost of input tokens can be estimated to quite high accuracy, because the text of the prompt is known before request is made. As tokenization is a cheap operation in terms of compute time, it can be performed on the prompt by the system to find token count. Computed value depends on tokenizer that is used, and as commercial LLM tokenizers aren't publicly available for all models, it's not possible to know input token count exactly. However, the quantity can be estimated simply by using a different, accessible tokenizer implementation. The system estimates token count using \texttt{tiktoken} implementation, used by OpenAI LLMs.
+
+\subsubsection{Output Tokens}
+
+Output token count is unknown before the request is made. As output token cost contribution may be dominant in the final request cost, a machine learning prediction mechanism was implemented, which attempts to guess output length based on chosen model and input prompt. It is described in section \ref{section:length-prediction}.
+
+\subsection{Reasoning Tokens}
+
+Similarly to output token count, reasoning token count is also unknown before request is made. In this case, however, there are no datasets that can be used as training data for a potential machine learning solution. Because of that, the system estimates reasoning token count as a proportion of predicted output token count, with multiplier depending on requested reasoning effort. An argument can also be made that reasoning token cost will likely influence the total cost to lesser degree due to significantly cheaper per-token cost relatively to output tokens. 
+
+\subsubsection{Web search}
+
+The system specifies two modes of web search: EXA prompt-based search, and native provider-side web search. Cost estimation is easy in case of EXA search. According to \textit{OpenRouter} documentation, EXA search is run before LLM request is made, retrieving a specified number of search results based solely on the LLM prompt, that can serve as additional context. Since the number of results is configurable, and price per result is known, EXA search cost can be computed exactly.
+
+In case of native web search, while the price per search tool invocation is known, the number of web search invocations cannot be configured in general. To estimate the cost, an instruction not to use more than a specified number of web search calls is added to LLM prompt. Subsequently, web search cost can be estimated by assuming that the specified number of search invocations will be performed.
+
+\subsubsection{Files}
+
+Cost of file inputs depends on their type.
+
+\begin{itemize}
+    \item \textbf{Images:} All models specify a set price per input image, making exact cost computation trivial.
+    \item \textbf{Text-based files:} Text files, and files converted to text during preprocessing (like Office XML formats), are included in input prompt, meaning that they influence the cost by incrementing the number of input tokens. Their cost can be estimated in the same way as input token cost - by tokenization.
+    \item \textbf{Audio:} Audio input is generally priced as input tokens, at the same per-token rate. [TODO: maybe just tokenize?]
+    \item \textbf{Video:} Video input pricing is not returned by \textit{OpenRouter}. Lack of any pricing information severely limits possible estimation methods. Due to these factors, only a rough estimation based on file size and image input price could be implemented.
+    \item \textbf{PDFs:} PDF input files are priced differently, based on requested processing mode. If text processing is chosen, text content is extracted from the file and priced as input tokens. Total text token count is estimated during file preprocessing, in the same way as prompt token count. If OCR processing is requested, PDF is priced per page - page count is computed together with text token count during preprocessing. In case of native processing, files are tokenized in model-specific way, making exact computation impossible. File token count is estimated based on text content and number of images contained in the PDF. 
+\end{itemize}
 
 \subsection{Selection Restrictions}
 \label{section:model-restriction}
 
-TODO
+[TODO: reference assumptions/introduction] The system is designed to be independent from the set of LLMs whose prompt and response data was included in the dataset used for scoring model creation, handling unknown LLM IDs and assigning scores based on certain mean LLM representation. This requirement ensures that the set of LLM models available through \textit{OpenRouter} doesn't need to be restricted in any way. While useful in practice, this characteristic is undesired when testing the system. For that purpose, a possibility of limiting the set of available LLMs was introduced. If the list of allowed model names is set through an API endpoint, Only specified LLMs will be used for step completion. This ensures that, when the system is tested, all available LLMs can be scored without falling back to average LLM representation.
 
 \chapter{Scoring}
 
@@ -943,6 +1026,7 @@ An additional advantage of multi-stage approach is faster training. Complex mode
 TODO: results
 
 \chapter{Response Length Prediction}
+\label{section:length-prediction}
 
 TODO: Should it be a separate chapter?
 
