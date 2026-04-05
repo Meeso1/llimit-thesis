@@ -274,11 +274,47 @@ TODO: More references
 
 \chapter{System Requirements \& Constraints}
 
-TODO: What did I decide to do? What constraints did I settle on?
+TODO
+
+\section{Requirements}
+
+\begin{enumerate}
+    \item \textbf{The system should complete tasks by breaking them down into a set of interdependent steps.} \\
+    The system is designed to complete complex, multi-step tasks, requiring web search and file handling. Breaking tasks down into steps allows the system to choose the most suitable LLM for each, improving overall result quality and reducing cost.
+    \item \textbf{The system should be able to use a wide variety of LLMs from different providers to complete task steps.} \\
+    There are numerous LLM providers, each offering a range of models. Models differ both in "intelligence" (providers usually offer smaller and cheaper models, recommended for simple prompts, and bigger, more expensive models for complex tasks), and in domain-specific strengths. As the main idea behind the system is utilization of these differences, wide selection of LLMs that can be used for step completion is critical.
+    \item \textbf{The system should handle step execution errors gracefully, continuing task completion if possible.} \\
+    The problem that the system is meant to solve is open-ended. In principle, user-requested tasks might be impossible to complete. This problem is described in greater detail in section [TODO: ref]. This property, together with relatively low reliability (at least in comparison to deterministic algorithmic approaches) of generating structured data using LLMs, makes error handling a critical aspect of the system.
+    \item \textbf{The choice of step completion LLMs should be done based on estimated request cost and predicted quality of the response.} \\
+    The system is meant to balance task completion cost with the quality of the result.
+    \item \textbf{Response quality should be predicted using machine learning methods, based on the LLM and request prompt.} \\
+    To be able to learn and utilize domain-specific LLM strengths, scoring must be performed in a prompt-aware way.
+    \item \textbf{The scoring component should be extendable to new LLMs without requiring human comparison data.} \\
+    As described in section [TODO: ref], constructing a human evaluation dataset for a given set of LLMs is much harder than simply gathering LLM responses to a varied set of prompts. While high quality human comparison datasets are available, the pace at which new LLMs are released causes any such newly published dataset to immediately become outdated. To mitigate this problem, the scoring component should be able to infer required information about a new LLM given only a set of prompts and it's responses.
+    \item \textbf{The scoring component should be able to assign a score to an unseen LLM.} \\
+    New LLMs are released often. Without some fallback handling of unseen LLMs, the system would either require prompt and response data from all available LLMs to function, or some LLM whitelist mechanism would be necessary. The first option is extremely inconvenient, while the second is too restrictive. Falling back to some default scoring behavior is a more practical alternative. Obviously, as no information is available about previously unseen LLMs, assigned score likely won't be too accurate.
+\end{enumerate}
+
+\section{Constraints}
+
+\begin{enumerate}
+    \item \textbf{The system will use a single configured LLM model for task planning.} \\
+    Different tasks may require different level of "intelligence" for generating a list of steps. Similarly, plan reevaluation during error recovery may also vary in complexity. While estimating that complexity and choosing an LLM based on this estimation would be an interesting extension of the project, it was rejected due to excessive complexity and lack of fitting datasets. Instead, LLM model used for initial planning and reevaluation is configurable, and set to \textit{Google's} \textit{Gemini 3.1 Pro} [TODO: cite]. 
+    \item \textbf{The system will only complete tasks by generating a text result.} \\
+    LLMs (and adjacent models offered by the same providers) can handle a variety of tasks aside from text generation. They can generate images, execute code, perform actions on the web or in the operating system, etc. Supporting these abilities would definitely be a welcome addition to the system. However, this would considerably increase implementation complexity, and as such was rejected. 
+    \item \textbf{When selecting an LLM to complete a step, the system will only consider estimated completion cost and predicted response quality.} \\
+    A number of additional metrics can be considered in addition to the aforementioned. In particular, LLMs differ significantly in generation speed - predicting and incorporating response time in selection process could be an interesting addition.
+    \item \textbf{Response quality will be predicted based only on the LLM and request prompt.} \\
+    As described in section [TODO: ref], step definition contains more information than just the prompt. This data could be used as prediction input, potentially improving the accuracy of assigned scores. It was decided not to do so, mainly because of lack of datasets that could be used for training.
+\end{enumerate}
+
+TODO: continue
 
 \chapter{Description of the System}
 
 The system was implemented as a REST API application, which allows users to create a task, monitor it's state, and receive the result. [TODO: update?] For simplicity, no UI was implemented - the system can be controlled by manual HTTP requests instead. While implementing a user-friendly interface would be an improvement, it isn't too interesting in the context of the problem, while relative simplicity of implemented operations makes it not required for testing and demonstration purposes.
+
+TODO: Technologies
 
 \section{API Interface}
 
