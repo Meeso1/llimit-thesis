@@ -155,6 +155,8 @@
 
 \usepackage{algorithm}
 \usepackage{algorithmic}
+\usepackage{url}
+\usepackage[justification=centering]{caption}
 
 % -------------------------- USER SETTINGS ---------------------------
 
@@ -262,19 +264,152 @@ TODO
 
 \chapter{Related Work}
 
-\section{RouteLLM}
+Partial problems that the system solves are addressed in a number of works and solutions, both open and commercial. Task execution planning that relies on a dynamic list of steps is used by numerous, if not most, agentic systems. Agentic code editors, like \textit{Cursor} [TODO: cite], either implicitly rely on this approach to complete complex user requests, or are able to use it conditionally. Computer use agents, like \textit{Simular's} \textit{Agent S2} \cite{agashe2025agents2}, often use step-based planning as a foundation of their operations. 
 
-TODO
+Dynamic selection of LLM models is researched by a range of works, albeit this problem is usually less critical than dynamic planning for most systems, since often usage of a single LLM model is sufficient for a specific kind of operation that a given solution needs to perform. I.~Ong et. al. in \textit{RouteLLM: Learning to Route LLMs with Preference Data} \cite{ong2025routellm} paper focus on routing prompts between two groups of LLMs - weaker but cheaper, and more expensive but stronger models - with the purpose of reducing average response cost while minimizing quality reduction. \textit{RoRF: Routing on Random Forests} blog post by \textit{Not Diamond} \cite{notdiamond2024rorf} describes a simpler variant of the same problem, using random forests to route prompts between pairs of LLMs. [TODO: like 1 more example].
 
-\section{RoRF - Routing over Random Forests}
+\section{Cursor}
 
-TODO
+\textit{Cursor} is an agentic code editor, using a variety of LLM models to generate code and create software. When completing complex user requests, planning is critical, and as such, \textit{Cursor} includes certain tools and solutions for this. Cursor code editing agents use two main approaches to planning: step-based, using a \textit{todo} list tool, and text-based, via planning mode [TODO: ref].
+
+\textit{Todo} list approach relies on a simple tool that the agent can call, supplying a list of steps required to complete the task. Subsequently, currently active planned step will be included in agent's context until it is marked as complete, after which the next one will take it's place, and so on. While extremely simple, The mechanism does ensure that the agent "stays on track", and doesn't forget crucial requirements over time. 
+
+Planning mode behaves differently, and is even more simple. When asked to plan changes, instead of performing edits right away, the agent will investigate the codebase, and prepare a detailed plan of required changes in form of a markdown file. Then, such plan can be followed by another agent. As the plan is a file, instead of being only contained in LLM context, agent can read it whenever necessary, preventing it from forgetting information while completing the task. This approach seems to be more dominant in other agentic coding tools (i.e. Github Copilot [TODO: ref] and Claude Code [TODO: ref]).
+
+In both cases, no specific mechanism is implemented to generate the plan - it is simply done by querying chosen LLM model, with instructions and relevant context included in the prompt.
+
+\section{Agent S2}
+
+\textit{Agent S2} is a multi-LLM computer use agentic system described by S.~Agashe et. al. in \textit{Agent S2: A Compositional Generalist-Specialist Framework for Computer Use Agents} \cite{agashe2025agents2}, designed to perform tasks requiring general UI usage via keyboard and mouse inputs. It's planning mechanism, called \textit{Proactive Hierarchical Planning} (PHP), relies on breaking down the task into a list of steps, that are then completed sequentially.
+
+The agent operates on two levels of hierarchy. Planning - step list generation - is performed by a \textit{Manager} module based on task description and current state (given by a screenshot). Then, steps are completed in sequence by the \textit{Worker} module through an appropriate sequence of actions (clicks, keystrokes, etc.).
+
+As the name suggests, PHP mechanism is proactive - step list is regenerated not only when step execution fails, but after a each step (illustrated by diagram \ref{fig:agent-s2-flow}). When \textit{Worker} module finishes work on a given step, either successfully or not, \textit{Manager} model is invoked to generate a new step list based on previously generated list, and current state. This unusual decision is especially important in computer use tasks, where exact state of UI after step completion is hard to predict exactly (pop-ups, partial results, time-sensitive states, etc.).
+
+Usefulness of this design decision is confirmed by an ablation study. The paper compares performance of the system utilizing PHP mechanism, with a modification that only reevaluates the plan reactively. Evaluation using \textit{OSWorld} benchmark [TODO: cite] shows a $+4.62 \%$ success rate increase over reactive planning at 15 steps, and $+6.15 \%$ increase at 50 steps.
+
+Similarly to plan generation methods implemented in \textit{Cursor}, no special solution is introduced to handle actual step list generation. A commercial, general purpose LLM is prompted to generate a structured output representing the list of steps, based on task description, current state, and relevant context.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\textwidth]{thesis/diagrams/agent-s2-structure.png}
+    \caption{Planning and step execution flow in \textit{Agent S2}\\
+    \small{From \textit{Agent S2: A Compositional Generalist-Specialist Framework for Computer Use Agents} \cite{agashe2025agents2}}}
+    \label{fig:agent-s2-flow}
+\end{figure}
+
+\section{RouteLLM: Learning to Route LLMs with Preference Data}
+
+\textit{RouteLLM} paper attempts to solve the problem of routing LLM prompts between 2 groups of models, differing in capabilities and cost. Proposed solutions can be described as probability-predicting functions $P_\theta$, such that the routing decision is then decided using the function described by equation \ref{equation:routellm-routing}, parametrized by $\alpha$. $P_\theta$ predicts probability that, for a given prompt, a model from stronger group will produce a response that is strictly better than a response of a model from weaker group. If the probability is higher then a set threshold, prompt is routed to a stronger group. Otherwise, if probability of achieving a similarly good response from weaker models is sufficient, prompt is directed to weaker group.
+
+\begin{equation}
+\label{equation:routellm-routing}
+    R_\alpha(q) = \begin{cases} M_{\text{strong}} & \text{if } P_\theta(\text{win}_s \mid q) > 1 - \alpha \\ M_{\text{weak}} & \text{otherwise} \end{cases}
+\end{equation}
+
+\subsection{Dataset}
+\label{section:routellm-datasets}
+
+\textit{RouteLLM} uses three distinct comparison datasets:
+
+\begin{enumerate}
+    \item \textit{Chatbot Arena Conversations}, described in section \ref{section:dataset-selection} (training/validation split).
+    \item \textit{Nectar} dataset, enriched with responses generated from \textit{Mixtral-8x7B} model, and compared using \textit{OpenAI's GPT-4} model (only training).
+    \item \textit{MMLU} benchmark validation split with \textit{Mixtral-8x7B} and \textit{GPT-4} responses, compared based on response correctness (only training, specifically to boost performance on MMLU benchmark). 
+\end{enumerate}
+
+Models present in \textit{Chatbot Arena} dataset were divided into 10 performance tiers using dynamic programming. Strong and weak groups that models route between are, respectively, tiers 1 and 2, and tier 3. Other tier data is unused (with the exception of matrix factorization method, which learns group embeddings of all 10 tiers).
+
+\subsection{Methods}
+
+Paper proposes four distinct probability-predicting methods:
+
+\begin{enumerate}
+    \item \textbf{Similarity-weighted (SW) Ranking} \\
+    A non-parametric, inference time method. For a given input query, cosine similarity is computed between it's embedding vector (generated using \textit{OpenAI's} \texttt{text-embedding-3-small} model) and embeddings of all other queries in the training set. These similarities are used to compute exponential sample weights, according to equation \ref{equation:routellm-swr} ($v_q$ and $v_{q'}$ represent embedding vectors computed from queries $q$ and $q'$).
+    \begin{equation}
+    \label{equation:routellm-swr}
+        \omega'(q, q') = \gamma^{1 + S(q, q')}, \quad S(q, q') = \frac{v_q \cdot v_{q'}}{\|v_q\|\|v_{q'}\|} \cdot \max_{1 \le s \le |D|} \frac{v_{q'} \cdot v_q}{\|v_{q'}\|\|v_q\|}
+    \end{equation}
+    Subsequently, a Bradley-Terry model is fit, minimizing binary cross-entropy, with sample weights given by the formula \ref{equation:routellm-swr}. It's output is then returned as predicted probability. [TODO: Does this make sense?]
+    \item \textbf{Matrix Factorization} \\
+    The model learns a bilinear scoring function, given by equation \ref{equation:routellm-matrix-factorization-score}. Then, predicted probability is given by formula \ref{equation:routellm-matrix-factorization-probability}. \\
+    $v_q$, like in previous method, represents a text embedding of query $q$. $v_m$ is a learnable model tier embedding - a separate embedding is learned for each model tier identified in dataset preprocessing in section \ref{section:routellm-datasets}, not only for two model groups that routing is decided between. The model is fit through gradient descent, using \textit{Adam} optimizer and binary cross-entropy objective function.
+    \begin{equation}
+    \label{equation:routellm-matrix-factorization-score}
+        \delta(M, q) = w_2^T \left( v_m \odot (W_1^T v_q + b) \right)
+    \end{equation}
+    \begin{equation}
+    \label{equation:routellm-matrix-factorization-probability}
+        P_\theta(\text{win}_s \mid q) = \sigma\left(\delta(M_s, q) - \delta(M_w, q)\right)
+    \end{equation}
+    \item \textbf{BERT Classifier} \\
+    Full fine-tuning was performed on \texttt{BERT-base} transformer model [TODO: ref]. The final predicted probability is determined passing \texttt{CLS} token embedding through logistic regression head. 
+    \item \textbf{Llama Classifier} \\
+    Full fine-tuning of \textit{Llama 3 8B} model. Probability prediction is done by appending new tokens to model vocabulary, representing possible comparison results - the final answer is based on logits assigned to these tokens by the model. 
+\end{enumerate}
+
+\subsection{Results}
+
+The paper evaluates proposed methods using two metrics:
+
+\begin{itemize}
+    \item \textbf{CPT($x \%$)}: percentage of prompts routed to strong model group, required to reach $x \%$ os strong group performance.
+    \item \textbf{APGR}: area-under-curve measure of performance gain over random routing.
+\end{itemize}
+
+Evaluation is performed across three benchmarks:
+
+\begin{itemize}
+    \item \textbf{MT Bench} \\
+    MT Bench is a set of 160 questions spanning various categories, with response quality being scored on 1-10 scale by an LLM judge [TODO: cite?]. Matrix factorizaton method achieves best results, with  $CPT(50 \%) = 13.4 \%$, $CPT(80 \%) = 31.3 \%$, $AGPR = 60.4 \%$.
+    \item \textbf{MMLU} \\
+    MMLU benchmark is a set of over 14 thousand multiple-choice questions, with objectively correct responses that model outputs can be evaluated against [TODO: cite?]. SW Ranking method performs the best, with $CPT(50 \%) = 35.4 \%$, $CPT(80 \%) = 71.6 \%$, $AGPR = 20.7 \%$.
+    \item \textbf{GSM8K} \\
+    GSM8K consists of over a thousand grade school math problems, mainly focusing on multi-step arithmetic reasoning. Llama classifier does the best in this case, with $CPT(50 \%) = 33.6 \%$, $CPT(80 \%) = 66.3 \%$, $AGPR = 25.3 \%$.
+\end{itemize}
+
+\section{RoRF: Routing on Random Forests}
+
+\textit{RoRF} blog post describes a simpler approach to prompt routing. Given a set of comparison data between a pair of LLM models, the model describes fitting a simple random forest classifier using only prompt embedding vectors as input.
+
+\subsection{Dataset}
+
+Contrary to \textit{RouteLLM} approach, \textit{RoRF} describes fitting a specific router for a set pair of LLM models, based on comparison data between them. Two such datasets were published by \textit{Not Diamond} on \textit{HuggingFace}: \texttt{notdiamond/rorf-llama31405b-llama3170b-battles} and \texttt{notdiamond/repliqa\_gpt4o\_gpt4omini\_evals}.
+
+\subsection{Method}
+
+Routing logic is extremely simple. Random forest classifier is trained with the goal of predicting comparison outcome given only text embedding of the prompt. To compute embeddings, \texttt{jina-embeddings-v3} model was used, producing 1024-dimensional dense embedding vectors. Instead of simply predicting which LLM won the comparison, random forest is trained to predict the exact comparison outcome - including cases when both models gave good response, and when both models gave bad answer. During inference, predicted probabilities of all outcomes are aggregated to produce a single probability, based on which the routing choice is made: the probability of routing the prompt to weaker model is simply a probability that weaker model gave a good answer, which is a sum of probability that weaker model won the comparison, and the probability that both models gave good answer. 
+
+While extremely simple, this approach is heavily dependent on training data. While \textit{RouteLLM} approach fits a single routing model that can be used with any pair of weaker and stronger models, \textit{RoRF} requires a comparison data specifically between LLMs that it will be routing prompts between.
+
+\subsection{Results}
+
+As \textit{RoRF} was published about a month after \textit{RouteLLM} paper, evaluation described in the blog post is limited to comparisons against methods proposed by \textit{RouteLLM}. Figures \ref{fig:rorf-vs-routellm-llama-claude} and \ref{fig:rorf-vs-routellm-two-llamas} compare results achieved by both methods while routing between specified pairs of LLMs.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\textwidth]{thesis/other/rorf-vs-routellm-1.png}
+    \caption{Comparison of benchmark results achieved by \textit{RoRF} and \textit{RouteLLM}\\
+    \small\url{https://www.notdiamond.ai/blog/rorf-routing-on-random-forests-2}}
+    \label{fig:rorf-vs-routellm-llama-claude}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\textwidth]{thesis/other/rorf-vs-routellm-2.png}
+    \caption{Comparison of benchmark results achieved by \textit{RoRF} and \textit{RouteLLM}\\
+    \small\url{https://www.notdiamond.ai/blog/rorf-routing-on-random-forests-2}}
+    \label{fig:rorf-vs-routellm-two-llamas}
+\end{figure}
+
+While results are similar or better in case of \textit{RoRF}, this improvement likely comes simply from fitting routing models specifically to a given pair of LLMs, rather than training for general case.
 
 TODO: More references
 
 \chapter{System Requirements \& Constraints}
 
-TODO
+The implementation of the system was preceded by defining a set of requirements that it should satisfy, as well as constraints to it's functionalities. As the system is mainly designed for personal use and demonstration purposes, rather than for a hosted instance to be accessed by general public, user-friendliness and security requirements are of secondary concern and are not discussed in this section.
 
 \section{Requirements}
 
@@ -290,7 +425,7 @@ TODO
     \item \textbf{Response quality should be predicted using machine learning methods, based on the LLM and request prompt.} \\
     To be able to learn and utilize domain-specific LLM strengths, scoring must be performed in a prompt-aware way.
     \item \textbf{The scoring component should be extendable to new LLMs without requiring human comparison data.} \\
-    As described in section [TODO: ref], constructing a human evaluation dataset for a given set of LLMs is much harder than simply gathering LLM responses to a varied set of prompts. While high quality human comparison datasets are available, the pace at which new LLMs are released causes any such newly published dataset to immediately become outdated. To mitigate this problem, the scoring component should be able to infer required information about a new LLM given only a set of prompts and it's responses.
+    As described in section \ref{section:dataset-selection}, constructing a human evaluation dataset for a given set of LLMs is much harder than simply gathering LLM responses to a varied set of prompts. While high quality human comparison datasets are available, the pace at which new LLMs are released causes any such newly published dataset to immediately become outdated. To mitigate this problem, the scoring component should be able to infer required information about a new LLM given only a set of prompts and it's responses.
     \item \textbf{The scoring component should be able to assign a score to an unseen LLM.} \\
     New LLMs are released often. Without some fallback handling of unseen LLMs, the system would either require prompt and response data from all available LLMs to function, or some LLM whitelist mechanism would be necessary. The first option is extremely inconvenient, while the second is too restrictive. Falling back to some default scoring behavior is a more practical alternative. Obviously, as no information is available about previously unseen LLMs, assigned score likely won't be too accurate.
 \end{enumerate}
@@ -308,13 +443,13 @@ TODO
     As described in section [TODO: ref], step definition contains more information than just the prompt. This data could be used as prediction input, potentially improving the accuracy of assigned scores. It was decided not to do so, mainly because of lack of datasets that could be used for training.
 \end{enumerate}
 
-TODO: continue
-
 \chapter{Description of the System}
 
 The system was implemented as a REST API application, which allows users to create a task, monitor it's state, and receive the result. [TODO: update?] For simplicity, no UI was implemented - the system can be controlled by manual HTTP requests instead. While implementing a user-friendly interface would be an improvement, it isn't too interesting in the context of the problem, while relative simplicity of implemented operations makes it not required for testing and demonstration purposes.
 
-TODO: Technologies
+\section{Technology selection}
+
+The system was implemented in \textit{Python} 3.13, using \textit{FastAPI} [TODO: ref] framework. Scoring models were implemented using \textit{Pytorch} and \textit{XGBoost} packages, with \textit{scikit-learn} utilities being used for preprocessing.
 
 \section{API Interface}
 
@@ -516,6 +651,7 @@ Cost of file inputs depends on their type.
 TODO
 
 \section{Dataset Selection}
+\label{section:dataset-selection}
 
 The title of the most popular human-evaluated LLM preference dataset without a doubt belongs to \textit{Chatbot Arena Conversations} [TODO: ref]. It is used as primary human-evaluated dataset in referenced works [TODO: verify and ref]. 
 
@@ -772,6 +908,8 @@ TODO
 
 [TODO: What is gradient boosting?]
 
+TODO: swap with DNN model (but move i.e. checkpointing there)
+
 Gradient boosting models are a common first choice when developing a machine learning solution for regression and classification problems. They are usually quick to learn various simple and intermediate patterns from the data. [TODO: verify] Additionally, their structure makes them relatively interpretable (especially in comparison to various neural network-based models) - as gradient boosting model is simply an ensemble of decision trees, nodes of these trees can be analyzed to find certain patterns about input to output relationships.
 
 Instead of implementing a separate, prompt-aware gradient boosting model, implementation described in section \ref{section:prompt-invariant-embedding-based-models} was extended, making input data used for scoring configurable. Based on configuration, in addition to LLM embeddings model can rely on prompt embedding vectors, as well as scalar prompt features.
@@ -779,6 +917,28 @@ Instead of implementing a separate, prompt-aware gradient boosting model, implem
 To match the interface of other models described further in this section, whose training process is based on \textit{epochs}, the implementation of gradient boosting algorithm does not rely on a explicitly set number of boosting iterations - contrary to the interface offered by, for example, \texttt{XGBoost} package. This dynamic approach makes it possible to perform validations or checkpointing between epochs, and most importantly allows us to implement a mechanism which reverts model state to the one that achieved the best validation accuracy. This means that longer training process can never have a negative effect on model quality - if the model starts to overfit to training data, or hits a plateau, it will be reverted to best recorded state.
 
 Due to it's convenience, this state reverting mechanism was implemented in all iterative models implemented during this project.
+
+\subsubsection{Metrics}
+\label{equation:scoring-gb-metrics}
+
+To monitor learning process of the gradient boosting model, the following metrics were introduced in addition to loss and accuracy values over training and validation sets:
+
+\begin{itemize}
+    \item \textbf{Standard deviation of predictions} \\
+    TODO: does this make sense in scoring model? As the number of decision trees in gradient boosting model increases, the model should be able to distinguish between more samples, returning more diversified outputs. Each appended regressor represents a new set of prediction rules, composed with a goal of distinguishing between a subset of samples, such that each group can be assigned a more accurate output value. This process implies that standard deviation of output values should increase during fitting, approaching a constant when training stalls.
+    \item \textbf{Mean new tree contribution} \\
+    New decision trees are appended to the gradient boosting ensemble with the goal of changing it's prediction in a certain way. The magnitude of this change can be tracked - it's value is given by equation \ref{equation:scoring-gb-new-tree-contribution}. Recorded values of this measure are expected to decrease to zero during training process, as the model learns details of lower and lower importance. 
+    \begin{equation}
+    \label{equation:scoring-gb-new-tree-contribution}
+        \operatorname{C}_t = \operatorname{mean}(\vert \hat{y}_i^{(t)} - \hat{y}_i^{(t-1)} \vert)
+    \end{equation}
+    \item \textbf{Total feature gain improvement} \\
+    Gradient boosting trees are constructed by greedily selecting the best split at each node, maximizing \textit{Gain} - a property given by equation \ref{equation:scoring-gb-gain}. $G_R$ and $G_L$ represent sums of first-order gradients of the objective function in right and left child node, $H_R$ and $H_L$ - sums of second-order gradients in child nodes, $\lambda$ - L2 penalty term, and $\gamma$ - split penalty term (minimal gain required to add a new node). As gain is closely related to loss function minimization, it can be interpreted as an importance measure of each node. From this interpretation, input component and scalar feature importance can be defined as a sum of gain values in nodes that use information from that component or feature when splitting data. Low gain sum for a given component or feature means that it is considered only in nodes that don't contribute to the output in a significant way, which effectively signals that it is ignored by the ensemble.
+    \begin{equation}
+    \label{equation:scoring-gb-gain}
+        \text{Gain}(m, j, t) = \frac{1}{2}\left( \frac{G_L^2}{H_L + \lambda} + \frac{G_R^2}{H_R + \lambda} - \frac{(G_L + G_R)^2}{H_L + H_R + \lambda} \right) - \gamma
+    \end{equation}
+\end{itemize}
 
 \subsubsection{Results}
 
@@ -900,12 +1060,10 @@ A number of fine-tuning methods were implemented. Initially, the easiest approac
 \begin{figure}[h]
     \centering
     \includegraphics[width=0.7\textwidth]{thesis/diagrams/fine-tuning-metods.png}
-    \caption{Fine-tuning methods comparison}
+    \caption{Fine-tuning methods comparison\\
+    \small\url{https://wandb.ai/sauravmaheshkar/QLoRA/reports/What-is-QLoRA---Vmlldzo2MTI2OTc5}}
     \label{fig:fine-tuning-methods-comparison}
 \end{figure}
-
-% TODO: add source
-% From: https://wandb.ai/sauravmaheshkar/QLoRA/reports/What-is-QLoRA---Vmlldzo2MTI2OTc5
 
 \subsubsection{Interaction Features}
 
@@ -920,6 +1078,7 @@ Of course, this approach does not guarantee that the model cannot ignore prompts
 The model uses the same two ranking loss function variants as dense network model (in section \ref{section:dnn-model}) - margin ranking loss, and Bradley-Terry cross-entropy loss.
 
 \subsubsection{Metrics}
+\label{section:transformer-model-metrics}
 
 The same diagnostic metrics were introduced as in dense network model. As fine-tuned transformer module takes text as input, gradient attribution is computed for prompt embedding vectors that it outputs.
 
@@ -1064,21 +1223,108 @@ TODO: results
 \chapter{Response Length Prediction}
 \label{section:length-prediction}
 
-TODO: Should it be a separate chapter?
-
-While predicting how well different LLM models can handle a given prompt is the most important part of the LLM selection process, there is a second unknown quantity that influences the choice: response length. While pricing rules of LLM requests are usually clear, cost dependence on response token count makes it impossible to accurately calculate the cost of a given request beforehand. Generally, this isn't a significant problem - output tokens are relatively cheap, especially in the context of requests including images and files in the input. TODO: Continue
+While predicting how well different LLM models can handle a given prompt is the most important part of the LLM selection process, there is a second unknown quantity that influences the choice: response length. While pricing rules of LLM requests are usually clear, dependence on response token count makes it impossible to accurately calculate the cost of a given request beforehand. Generally, this isn't a significant problem - output tokens are relatively cheap, especially in the context of requests including images and files in the input. However, as response length estimation is necessary at the same point in task execution process as predicted response quality, it turns out that predicting the length using machine learning methods is quite easy to implement. As response length prediction is an interesting subproblem, it was decided to explore the topic.
 
 \section{Input and Output Data}
 
-TODO
+Response length prediction models use mostly the same input data as scoring models - LLM embeddings, prompt embeddings, and scalar prompt features. Training is done using the same dataset as in case of scoring models training, with LLM comparisons broken down into prompt and response pairs.
+
+The only difference is a possibility of using LLM IDs as input. In case of scoring models, LLM embeddings are necessary to make models extendable to new LLMs without requiring comparison datasets featuring those LLMs - instead, a new embedding vector can be computed based on a set of prompts and responses. In case of response length prediction, comparison data isn't necessary. All required data is already contained in prompt and response set required for LLM embedding computation, and length prediction model can simply be re-trained using all available data. 
+
+While presence of LLM IDs in input data does make LLM embeddings redundant, it was decided to include them in input data. LLM embedding vectors encode information necessary for distinguishing LLM models, derived from their responses - it is likely that this representation captures some information about response length and it's relation to the prompt, making it useful for length prediction task. Alternatively, if LLM embeddings turn out to not be helpful, models should be able to learn to ignore this part of input.
+
+Output of response prediction models is the token count of the response. To compute it, \texttt{tiktoken} tokenizer is used. Similarly to scalar prompt features, output data is transformed to make prediction easier. Logarithm of token counts is taken, and resulting values are normalized to mean 0 and standard deviation equal to 1. Models learn to predict these values, and during inference inverse transformations are used to reconstruct the token count.
+
+[TODO: Plot comparing original and transformed output lenghts]
+
+\section{Metrics}
+\label{section:length-prediction-metrics}
+
+To diagnose model performance over the training process, a number of metrics were introduced in addition to training and validation loss function values. All metrics are computed after an inverse transformation of predicted vales, comparing them to the unprocessed response token counts.
+
+\begin{itemize}
+    \item \textbf{Mean average error:} $\operatorname{mean}(\vert \hat{y} - y \vert)$
+    \item \textbf{Average relative error:} $\operatorname{mean}(\vert 1 - \frac{\hat{y}}{y} \vert)$     
+    \item \textbf{Average relative ratio:} $\operatorname{mean}(\frac{\hat{y}}{y})$
+    \item \textbf{Standard deviation ratio:} $\frac{\sigma(\hat{Y})}{\sigma(Y)}$, where $Y$ represents a set of true response lengths, and $\hat{Y}$ - predicted values.
+\end{itemize}
+
+Additionally, a synthetic accuracy-like metric was introduced, with the purpose of being a single-valued measure prediction quality, used, for example, in model state checkpointing. Synthetic accuracy was designed to be increasing as model predictions approach true values, and to be contained between 0 and 1 - like accuracy in classification tasks. It is given by equation \ref{equation:length-prediction-synthetic-accuracy}. Effectively, it transforms average relative error onto $(0, 1]$ range, inverting it, so that lower error produces bigger values.
+
+\begin{equation}
+\label{equation:length-prediction-synthetic-accuracy}
+    A(Y, \hat{Y}) = 2^{-\operatorname{mean}(\vert 1 - \frac{\hat{y}}{y} \vert)}
+\end{equation}
 
 \section{Models}
 
+\subsection{Linear Regression Model}
+
+The first response length prediction model that was implemented relies on linear regression. It's purpose is to serve as a simple baseline for subsequent, more sophisticated models.
+
+Linear regression approximates the relationship between input and output data as a linear function. Prediction process is given by equation \ref{equation:length-prediction-linear-regression}, where parameters $w_{m_i}$ and $b_{m_i}$ are trainable. Their values are set through least squares linear regression algorithm.
+
+\begin{equation}
+\label{equation:length-prediction-linear-regression}
+    L(x_i, m_i) = x_i^T w_{m_i} + b_{m_i} 
+\end{equation}
+
+$x_i$ represents prompt input data, and $m_i$ - chosen LLM model. A separate pair of weights and biases is fit for each LLM present in training data. Additionally, a set of parameters is fit on all data, which can be used to predict response length of LLMs which were not seen during training.
+
+Input feature vector $x$ consists of a configurable subset of prompt features. This allows the same implementation to represent prediction methods of varying degree of complexity. In particular, if prompt feature set is empty, the model simply predicts response length to be the average for a chosen LLM.
+
+\subsubsection{Results}
+
+TODO
+
 \subsection{Gradient Boosting Model}
+
+Gradient boosting length prediction model is very similar to it's equivalent used for scoring, described in section [TODO: ref]. The model uses the same configurable input feature set, consisting of prompt embedding vectors, scalar prompt features, and LLM embeddings, additionally extended by one-hot-encoded LLM IDs. Output values that the model is fitted to predict are response length deviations from average values for a given model. 
+
+Contrary to scoring problem, length prediction task does not require a sophisticated objective function design. Correctness of a given score assignment depended on the score assigned to the other sample in the training pair, requiring custom solutions. As length prediction is a straightforward regression task, mean squared error is used as loss function.
+
+Training process is implemented iteratively, fitting an additional decision tree on top of already trained model during each \textit{epoch}. Diagnostic metrics are calculated and logged after each epoch, and model state is checkpointed, so that after training the model can be reverted to the state which achieved the highest validation accuracy. The model uses only metrics described in section \ref{section:length-prediction-metrics}.
+
+\subsubsection{Metrics}
+
+In addition to metrics described in section \ref{section:length-prediction-metrics}, additional diagnostic measures specific to gradient boosting model were implemented. They are based on the set of metrics described in section \ref{equation:scoring-gb-metrics}.
+
+\begin{itemize}
+    \item \textbf{Standard deviation of predictions:} Standard deviation of predicted response length deviations.
+    \item \textbf{Mean new tree contribution:} Mean change of model predictions caused by adding a new regressor to the ensemble.
+    \item \textbf{Total feature gain improvement:} Cumulative sum of gains over tree nodes that consider given input component or scalar feature in the split.
+\end{itemize}
+
+\subsubsection{Results}
 
 TODO
 
 \subsection{DNN Model}
+
+Dense network model is constructed in a similar way to the scoring model, described in section \ref{section:dnn-model}. Input data consists of prompt embedding vectors, scalar prompt features, LLM embeddings, and LLM IDs. Like in case of gradient boosting model, the network is trained to predict deviations from average response length of a given model.
+
+Model architecture is presented on figure \ref{fig:dn-length-prediction-arch}. Like in case of scoring models, the problem of inconsistent dimensionality and magnitude of different input components is addressed by introduction of projection layers. They are used with all input components, except LLM IDs - in this case, embedding module is introduced, with the same dimensionality as configured projection size.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{thesis/diagrams/dn-length-prediction.drawio.png}
+    \caption{DNN length prediction model architecture}
+    \label{fig:dn-length-prediction-arch}
+\end{figure}
+
+To address the vanishing gradient problem, residual connections were introduced - if given pair of layers was configured to have the same size, residual connection is implemented using an identity transformation, while a linear layer is introduced otherwise.
+
+\subsubsection{Metrics}
+
+Additional metrics were introduced as an extensions of the set described in section \ref{section:length-prediction-metrics}. These metrics are mostly based on equivalent measures described in sections \ref{section:dnn-model-metrics} and \ref{section:transformer-model-metrics}, where reasoning behind the choice is explained. The main purpose of their introduction is interpretation of model predictions, and troubleshooting of potential obstacles that hinder it's learning process.
+
+\begin{itemize}
+    \item \textbf{Projection variance and norm:} Variance and L2 norm of projected values of each input component (outputs of their projection layers) are tracked.
+    \item \textbf{Module gradient norms:} Gradient magnitudes are tracked for every component.
+    \item \textbf{Input gradient attribution:} Dot product of input component gradients and input values is used to measure importance of each input value.
+\end{itemize}
+
+\subsubsection{Results}
 
 TODO
 
@@ -1105,6 +1351,9 @@ TODO
 \bibitem[6]{jordan2024muon} K.~Jordan, Y.~Jin, V.~Boza, J.~You, F.~Cesista, L.~Newhouse, J.~Bernstein, \emph{Muon: An Optimizer for Hidden Layers in Neural Networks}, 2024, \url{https://kellerjordan.github.io/posts/muon/}.
 \bibitem[7]{liu2025muonscalable} J.~Liu, J.~Su, X.~Yao, Z.~Jiang, G.~Lai, Y.~Du, Y.~Qin, W.~Xu, E.~Lu, J.~Yan, \emph{Muon is Scalable for LLM Training}, arXiv preprint arXiv:2502.16982, 2025.
 \bibitem[8]{nesterov2004introductory} Y.~Nesterov, \emph{Introductory Lectures on Convex Optimization: A Basic Course}, Springer, 2004.
+\bibitem[9]{ong2025routellm} I.~Ong, A.~Almahairi, V.~Wu, W.-L.~Chiang, T.~Wu, J.~E.~Gonzalez, M.~W.~Kadous, I.~Stoica, \emph{RouteLLM: Learning to Route LLMs with Preference Data}, International Conference on Learning Representations, 2025.
+\bibitem[10]{notdiamond2024rorf} Not Diamond, \emph{RoRF: Routing on Random Forests}, \url{https://www.notdiamond.ai/blog/rorf-routing-on-random-forests-2}, 2024.
+\bibitem[11]{agashe2025agents2} S.~Agashe, K.~Wong, V.~Tu, J.~Yang, A.~Li, X.~E.~Wang, \emph{Agent S2: A Compositional Generalist-Specialist Framework for Computer Use Agents}, arXiv preprint arXiv:2504.00906, 2025.
 
 \end{thebibliography}
 \pagenumbering{gobble}
