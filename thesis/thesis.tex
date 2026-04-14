@@ -271,11 +271,11 @@ Dynamic selection of LLM models is researched by a range of works, albeit this p
 
 \section{Cursor}
 
-\textit{Cursor} is an agentic code editor, using a variety of LLM models to generate code and create software. When completing complex user requests, planning is critical, and as such, \textit{Cursor} includes certain tools and solutions for this. Cursor code editing agents use two main approaches to planning: step-based, using a \textit{todo} list tool, and text-based, via planning mode [TODO: ref].
+\textit{Cursor} is an agentic code editor, using a variety of LLM models to generate code and create software. When completing complex user requests, planning is critical, and as such, \textit{Cursor} includes certain tools and solutions for this. Cursor code editing agents use two main approaches to planning: step-based, using a \textit{todo} list tool, and text-based, via planning mode \footnote{\url{https://docs.cursor.com/agent/planning-mode}}.
 
 \textit{Todo} list approach relies on a simple tool that the agent can call, supplying a list of steps required to complete the task. Subsequently, currently active planned step will be included in agent's context until it is marked as complete, after which the next one will take it's place, and so on. While extremely simple, The mechanism does ensure that the agent "stays on track", and doesn't forget crucial requirements over time. 
 
-Planning mode behaves differently, and is even more simple. When asked to plan changes, instead of performing edits right away, the agent will investigate the codebase, and prepare a detailed plan of required changes in form of a markdown file. Then, such plan can be followed by another agent. As the plan is a file, instead of being only contained in LLM context, agent can read it whenever necessary, preventing it from forgetting information while completing the task. This approach seems to be more dominant in other agentic coding tools (i.e. Github Copilot [TODO: ref] and Claude Code [TODO: ref]).
+Planning mode behaves differently, and is even more simple. When asked to plan changes, instead of performing edits right away, the agent will investigate the codebase, and prepare a detailed plan of required changes in form of a markdown file. Then, such plan can be followed by another agent. As the plan is a file, instead of being only contained in LLM context, agent can read it whenever necessary, preventing it from forgetting information while completing the task. This approach seems to be more dominant in other agentic coding tools (i.e. Github Copilot \footnote{\url{https://docs.github.com/en/copilot}} and Claude Code \footnote{\url{https://docs.anthropic.com/en/docs/claude-code/overview}}).
 
 In both cases, no specific mechanism is implemented to generate the plan - it is simply done by querying chosen LLM model, with instructions and relevant context included in the prompt.
 
@@ -287,7 +287,7 @@ The agent operates on two levels of hierarchy. Planning - step list generation -
 
 As the name suggests, PHP mechanism is proactive - step list is regenerated not only when step execution fails, but after a each step (illustrated by diagram \ref{fig:agent-s2-flow}). When \textit{Worker} module finishes work on a given step, either successfully or not, \textit{Manager} model is invoked to generate a new step list based on previously generated list, and current state. This unusual decision is especially important in computer use tasks, where exact state of UI after step completion is hard to predict exactly (pop-ups, partial results, time-sensitive states, etc.).
 
-Usefulness of this design decision is confirmed by an ablation study. The paper compares performance of the system utilizing PHP mechanism, with a modification that only reevaluates the plan reactively. Evaluation using \textit{OSWorld} benchmark [TODO: cite] shows a $+4.62 \%$ success rate increase over reactive planning at 15 steps, and $+6.15 \%$ increase at 50 steps.
+Usefulness of this design decision is confirmed by an ablation study. The paper compares performance of the system utilizing PHP mechanism, with a modification that only reevaluates the plan reactively. Evaluation using \textit{OSWorld} benchmark \cite{xie2024osworld} shows a $+4.62 \%$ success rate increase over reactive planning at 15 steps, and $+6.15 \%$ increase at 50 steps.
 
 Similarly to plan generation methods implemented in \textit{Cursor}, no special solution is introduced to handle actual step list generation. A commercial, general purpose LLM is prompted to generate a structured output representing the list of steps, based on task description, current state, and relevant context.
 
@@ -345,7 +345,7 @@ Paper proposes four distinct probability-predicting methods:
         P_\theta(\text{win}_s \mid q) = \sigma\left(\delta(M_s, q) - \delta(M_w, q)\right)
     \end{equation}
     \item \textbf{BERT Classifier} \\
-    Full fine-tuning was performed on \texttt{BERT-base} transformer model [TODO: ref]. The final predicted probability is determined passing \texttt{CLS} token embedding through logistic regression head. 
+    Full fine-tuning was performed on \texttt{BERT-base} transformer model \cite{devlin2019bert}. The final predicted probability is determined passing \texttt{CLS} token embedding through logistic regression head. 
     \item \textbf{Llama Classifier} \\
     Full fine-tuning of \textit{Llama 3 8B} model. Probability prediction is done by appending new tokens to model vocabulary, representing possible comparison results - the final answer is based on logits assigned to these tokens by the model. 
 \end{enumerate}
@@ -363,9 +363,9 @@ Evaluation is performed across three benchmarks:
 
 \begin{itemize}
     \item \textbf{MT Bench} \\
-    MT Bench is a set of 160 questions spanning various categories, with response quality being scored on 1-10 scale by an LLM judge [TODO: cite?]. Matrix factorizaton method achieves best results, with  $CPT(50 \%) = 13.4 \%$, $CPT(80 \%) = 31.3 \%$, $AGPR = 60.4 \%$.
+    MT Bench is a set of 160 questions spanning various categories, with response quality being scored on 1-10 scale by an LLM judge \cite{zheng2023mtbench}. Matrix factorizaton method achieves best results, with  $CPT(50 \%) = 13.4 \%$, $CPT(80 \%) = 31.3 \%$, $AGPR = 60.4 \%$.
     \item \textbf{MMLU} \\
-    MMLU benchmark is a set of over 14 thousand multiple-choice questions, with objectively correct responses that model outputs can be evaluated against [TODO: cite?]. SW Ranking method performs the best, with $CPT(50 \%) = 35.4 \%$, $CPT(80 \%) = 71.6 \%$, $AGPR = 20.7 \%$.
+    MMLU benchmark is a set of over 14 thousand multiple-choice questions, with objectively correct responses that model outputs can be evaluated against \cite{hendrycks2020mmlu}. SW Ranking method performs the best, with $CPT(50 \%) = 35.4 \%$, $CPT(80 \%) = 71.6 \%$, $AGPR = 20.7 \%$.
     \item \textbf{GSM8K} \\
     GSM8K consists of over a thousand grade school math problems, mainly focusing on multi-step arithmetic reasoning. Llama classifier does the best in this case, with $CPT(50 \%) = 33.6 \%$, $CPT(80 \%) = 66.3 \%$, $AGPR = 25.3 \%$.
 \end{itemize}
@@ -692,7 +692,7 @@ Aside from prompt embedding vectors, the following scalar features were used:
 
 Features that don't directly encode prompt length were normalized by that length, in order to reduce dependency between them - for example, it's reasonable to assume that longer prompts will, on average, contain more parentheses and question marks than shorter prompts.
 
-Vocabulary richness ratio was inverted by subtracting it's value from 1. This transformation was performed to make value distribution more similar to other features, which made it possible to unify it's further processing with other features [TODO: ref]. In an overwhelming majority of samples, nearly all words are different, causing vocabulary richness ratio to primarily take a value of 1 (or close to it). "Inverting" values causes them to instead be 0 (or close to it).
+Vocabulary richness ratio was inverted by subtracting it's value from 1. This transformation was performed to make value distribution more similar to other features, which made it possible to unify its further processing with the softplus transformation described in section~\ref{section:preprocessing-and-features}. In an overwhelming majority of samples, nearly all words are different, causing vocabulary richness ratio to primarily take a value of 1 (or close to it). "Inverting" values causes them to instead be 0 (or close to it).
 
 \subsection{Domain Scores}
 
@@ -758,7 +758,7 @@ Each domain score was defined as a ratio of words related to that domain, to tot
 
 Feature transformations were defined based on their value distributions. Two kinds of transformations were defined for numeric data, described further in this section. Aside from these transformations, all numeric features were scaled to mean 0 and standard deviation equal to 1.
 
-First, certain features show exponential behavior. Features related to prompt length are a perfect example of that [TODO: ref some plot]. Those features were transformed using a logarithm [TODO: reword] to achieve a more uniform value distribution. Small values are clipped to $10^{-6}$ to prevent them from exploding to $-\infty$. 
+First, certain features show exponential behavior. Features related to prompt length are a perfect example of that [TODO: ref some plot]. A logarithmic transformation is applied to such features to compress their range and obtain a more uniform value distribution. Small values are clipped to $10^{-6}$ to prevent them from collapsing to $-\infty$. 
 
 Second, certain numeric features are dominated by zero values. Domain scores are a good example. Most prompts don't refer to anything related to finance. While distinguishing between prompts where financial language dominates from prompts that contain a handful of financial terms might be significant, simply transforming the data via a logarithm causes prompts without financial language to have scores which are similar to prompts containing only a few phrases related to finance, making those two cases hard to distinguish. Additionally, zero value dominance will negatively impact scaling. To address these issues, the transformation described by equation \ref{equation:softplus-feature-transformation} was introduced. Additionally, to address the scaling issue, zero values were excluded from scaling - mean and standard deviation necessary for scaling was computed from remaining values. 
 
@@ -778,13 +778,13 @@ Transformation is applied after scaling. Softplus operation is applied to origin
 \section{Prompt-invariant Scoring}
 \label{section:prompt-invariant-scoring}
 
-A natural simplification of prompt routing problem comes from an assumption that LLM performance does not depend on the prompt. In this case, every LLM has a single score associated with them, and the problem reduces to assigning those scores based on comparison data. While this simplification makes the problem much less interesting and complex, it is more commonly used when ranking LLMs, due to capturing a general LLM quality rather than focusing on particular cases [TODO: examples, refs]. Also, exploration of this problem will serve as a good baseline for prompt-aware scoring.
+A natural simplification of prompt routing problem comes from an assumption that LLM performance does not depend on the prompt. In this case, every LLM has a single score associated with them, and the problem reduces to assigning those scores based on comparison data. While this simplification makes the problem much less interesting and complex, it is more commonly used when ranking LLMs, due to capturing a general LLM quality rather than focusing on particular cases \cite{zheng2023mtbench, ong2025routellm}. Also, exploration of this problem will serve as a good baseline for prompt-aware scoring.
 
 The problem of scoring entries based on comparison data can be expressed more rigorously, turning it into an optimization problem with well-defined fitness metric. Some such expressions have easily computable optimal solution.
 
 \subsection{L1 Criterion}
 
-The most natural way of expressing quality of score assignment is via accuracy - a percentage of comparisons where winning entry was assigned a higher score than the losing one. This is equivalent to minimizing the number of \textit{upsets} (comparisons such that entry A wins against entry B, but A was assigned a lower score than B). This criterion turns out to be NP-hard [TODO: ref]. However, if we take into account the magnitude of upsets (difference between scores assigned to A and B), the problem becomes solvable in polynomial time. Minimizing the sum of magnitudes can be expressed as a linear programming problem ($v_a$ represents the score assigned to entry A, and $\epsilon$ is added to prevent trivial solution of all scores being 0):
+The most natural way of expressing quality of score assignment is via accuracy - a percentage of comparisons where winning entry was assigned a higher score than the losing one. This is equivalent to minimizing the number of \textit{upsets} (comparisons such that entry A wins against entry B, but A was assigned a lower score than B). This criterion is equivalent to the minimum feedback arc set problem, which is NP-hard \cite{karp1972reducibility}. However, if we take into account the magnitude of upsets (difference between scores assigned to A and B), the problem becomes solvable in polynomial time. Minimizing the sum of magnitudes can be expressed as a linear programming problem ($v_a$ represents the score assigned to entry A, and $\epsilon$ is added to prevent trivial solution of all scores being 0):
 
 \begin{align*}
     \textrm{minimize} & \quad \sum s_i \\
@@ -850,7 +850,7 @@ As described in section \ref{section:preprocessing-and-features}, text embedding
 
 The simplest implementation of embedding model is simply a multi-layer perceptron. \textit{LeakyReLU} activation function was used, and dropout layers were introduced to prevent overfitting. Hidden layer sizes (and their number) are configurable.
 
-Model was trained using triplet margin loss, given by formula [TODO: ref]. Training sample features three prompt and response pairs: anchor, positive, and negative. Positive pair is produced by the same LLM as anchor, while negative pair is produced by a different LLM. Loss criterion encourages the model to produce embeddings such that the distance between anchor and positive embeddings is smaller than between anchor and negative (plus a margin).
+Model was trained using triplet margin loss \cite{schroff2015facenet}, given by formula [TODO: ref]. Training sample features three prompt and response pairs: anchor, positive, and negative. Positive pair is produced by the same LLM as anchor, while negative pair is produced by a different LLM. Loss criterion encourages the model to produce embeddings such that the distance between anchor and positive embeddings is smaller than between anchor and negative (plus a margin).
 
 Additionally, KL loss was introduced to encourage a sample embeddings to follow a normal distribution.
 
@@ -986,7 +986,7 @@ The score assignment goal that the network tries to achieve does not inherently 
 
 \subsubsection{Residual Connections}
 
-As depth of a dense neural network increases, a problem of vanishing gradient arises. [TODO: reference]. Gradient of early layer weights is a product of activation function gradients and weight values of later layers. Due to regularization and similar mechanisms, these values tend to be smaller than 1 on average, causing gradual decrease in gradient magnitude. To mitigate this issue, residual connections were introduced. Initially described by He et. al. in \textit{Deep Residual Learning for Image Recognition} paper \cite{he2016deep}, residual connections introduce a "skip-path" for each layer. Mathematically, this means that layer input is added to layer output. The modification ensures that early layers have a direct path to network output. As vector addition can only be performed if vectors have the same dimensionality, the implementation of skip connections that relies on adding layer input to output can only be performed for layers that have the same input and output dimension. The mechanism can be easily extended to layers where these dimensions are not equal, though, by introducing a linear projection layer with the same input and output dimensions as the "primary" layer, but without activation functions, normalization layers, and so on. This extension is also described in \textit{Deep Residual Learning for Image Recognition} paper \cite{he2016deep}, in the context of skip connections between CNN layers with different channel counts. The idea can be justified by the fact that application of multiple linear transformations is equivalent to a single linear transformation. In other words, an arbitrary early layer of the network can influence the output through a single linear transformation, which means it receives a clear gradient signal. 
+As depth of a dense neural network increases, a problem of vanishing gradient arises \cite{he2016deep}. Gradient of early layer weights is a product of activation function gradients and weight values of later layers. Due to regularization and similar mechanisms, these values tend to be smaller than 1 on average, causing gradual decrease in gradient magnitude. To mitigate this issue, residual connections were introduced. Initially described by He et. al. in \textit{Deep Residual Learning for Image Recognition} paper \cite{he2016deep}, residual connections introduce a "skip-path" for each layer. Mathematically, this means that layer input is added to layer output. The modification ensures that early layers have a direct path to network output. As vector addition can only be performed if vectors have the same dimensionality, the implementation of skip connections that relies on adding layer input to output can only be performed for layers that have the same input and output dimension. The mechanism can be easily extended to layers where these dimensions are not equal, though, by introducing a linear projection layer with the same input and output dimensions as the "primary" layer, but without activation functions, normalization layers, and so on. This extension is also described in \textit{Deep Residual Learning for Image Recognition} paper \cite{he2016deep}, in the context of skip connections between CNN layers with different channel counts. The idea can be justified by the fact that application of multiple linear transformations is equivalent to a single linear transformation. In other words, an arbitrary early layer of the network can influence the output through a single linear transformation, which means it receives a clear gradient signal. 
 
 \subsubsection{Loss Functions}
 
@@ -1065,7 +1065,7 @@ The same loss functions were implemented as in previously described models (in s
 
 \subsubsection{Fine-tuning Methods}
 
-A number of fine-tuning methods were implemented. Initially, the easiest approach involved simply unfreezing $n$ final layers of the model. This turned out to produce terrible results, while also not reducing the number of trainable parameters enough. [TODO: something more]. \textit{LoRA} and \textit{QLoRA} methods were implemented as alternatives. The main idea behind \textit{LoRA} (or \textit{Low Rank Adaptation}) is the introduction of a smaller number of new, trainable parameters, while keeping original model weights frozen. Effective, altered model weights are computed according to equation \ref{eq:lora}, where $r$ is a configurable rank of the transformation. [TODO: ref + some justification?]
+A number of fine-tuning methods were implemented. Initially, the easiest approach involved simply unfreezing $n$ final layers of the model. This turned out to produce terrible results, while also not reducing the number of trainable parameters enough. [TODO: something more]. \textit{LoRA} and \textit{QLoRA} methods were implemented as alternatives. The main idea behind \textit{LoRA} (or \textit{Low Rank Adaptation}), described by Hu et. al. in \textit{LoRA: Low-Rank Adaptation of Large Language Models} paper \cite{hu2022lora}, is the introduction of a smaller number of new, trainable parameters, while keeping original model weights frozen. Effective, altered model weights are computed according to equation \ref{eq:lora}, where $r$ is a configurable rank of the transformation. [TODO: ref + some justification?]
 
 \begin{align}
 \label{eq:lora}
@@ -1075,7 +1075,7 @@ A number of fine-tuning methods were implemented. Initially, the easiest approac
     B &\in R^{r \times n}
 \end{align}
 
-\textit{QLoRA} extends \textit{LoRA} method by also introducing model weight quantization. By default, transformer models usually use 16-bit floating point numbers as weights. QLoRA performs 8-bit quantization, followed by a 4-bit quantization using \textit{NormalFloat4} technique [TODO: ref]. \textit{NormalFloat4} encoding is a theoretically optimal way of encoding normally distributed values. While there is no theoretical reason to expect network weights to be normally distributed (although, perhaps, an argument could be made that this expectation is justified by Central Limit Theorem [TODO: ref], treating individual weight updates as random variables), this quantization method does seem effective in practice [TODO: ref]. Only the original model weights are quantized - new, trainable parameters from LoRA matrices retain their full, 16-bit representation. In addition to quantization, QLoRA also implements optimizer state pagination. To avoid out-of-memory issues during training, optimizer parameters (momentum, cache, etc.) that are not in active use are transferred to CPU memory. This results in a time overhead caused by numerous data transfers between GPU and CPU memory, but allows training larger models on a given architecture. The comparison of \textit{QLoRA} and other described fine-tuning is shown on figure \ref{fig:fine-tuning-methods-comparison}.
+\textit{QLoRA} \cite{dettmers2023qlora} extends \textit{LoRA} method by also introducing model weight quantization. By default, transformer models usually use 16-bit floating point numbers as weights. QLoRA performs 8-bit quantization, followed by a 4-bit quantization using \textit{NormalFloat4} technique \cite{dettmers2023qlora}. \textit{NormalFloat4} encoding is a theoretically optimal way of encoding normally distributed values. While there is no theoretical reason to expect network weights to be normally distributed (although, perhaps, an argument could be made that this expectation is justified by the Central Limit Theorem, treating individual weight updates as random variables), this quantization method does seem effective in practice \cite{dettmers2023qlora}. Only the original model weights are quantized - new, trainable parameters from LoRA matrices retain their full, 16-bit representation. In addition to quantization, QLoRA also implements optimizer state pagination. To avoid out-of-memory issues during training, optimizer parameters (momentum, cache, etc.) that are not in active use are transferred to CPU memory. This results in a time overhead caused by numerous data transfers between GPU and CPU memory, but allows training larger models on a given architecture. The comparison of \textit{QLoRA} and other described fine-tuning is shown on figure \ref{fig:fine-tuning-methods-comparison}.
 
 \begin{figure}[h]
     \centering
@@ -1350,7 +1350,7 @@ TODO
 
 \chapter{Analysis of the Solution}
 
-The problem solved by the system is inherently complex and multi-dimensional [TODO: better word?]. The goal of multistep task completion while minimizing cost relies on cooperation of multiple components and subsystems. As such, when evaluating performance of the system, analysis of individual parts of the application is crucial in addition to overall quality.
+The problem solved by the system is inherently multifaceted. The goal of multistep task completion while minimizing cost relies on cooperation of multiple components and subsystems. As such, when evaluating performance of the system, analysis of individual parts of the application is crucial in addition to overall quality.
 
 End-to-end system evaluation was performed using a benchmark of challenging, multistep questions, where an objectively correct answer is known, which makes automatic validation possible. Scoring component was evaluated by accuracy achieved over validation set, and it's extendability was researched by leaving one LLM out of training data, computing it's embedding vector, and evaluating scoring accuracy over it's comparison pairs. Response length prediction is evaluated in context of request cost estimation. It's impact on estimated cost is determined by swapping predicted response token count for the real value (after completing the request) and computing the cost in the same way. Additionally, the estimation method itself is analyzed by comparing it's outputs to real response cost, reported by \textit{OpenRouter}.  
 
@@ -1388,7 +1388,7 @@ Task which are impossible for the system to complete due to lack of support for 
 
 \subsection{Results}
 
-\subsubsection{Reference} % TODO: better title?
+\subsubsection{Baseline Performance}
 
 Human respondents achieve $92\%$ accuracy on benchmark tasks, according to original \textit{GAIA} paper \cite{mialon2023gaia}. Most mistakes were not caused by lack of capability to complete the task, but rather by simple attention faults (misreading, mistyping, etc.).
 
@@ -1456,6 +1456,14 @@ TODO
 \bibitem[13]{roucher2024beatinggaia} A.~Roucher, \emph{Our Transformers Code Agent beats the GAIA benchmark}, Hugging Face Blog, 2024, \url{https://huggingface.co/blog/beating-gaia}.
 \bibitem[14]{kapoor2026hal} S.~Kapoor, B.~Stroebl, P.~Kirgis, N.~Nadgir, Z.~S.~Siegel, B.~Wei, T.~Xue, Z.~Chen, F.~Chen, S.~Utpala, F.~Ndzomga, D.~Oruganty, S.~Luskin, K.~Liu, B.~Yu, A.~Arora, D.~Hahm, H.~Trivedi, H.~Sun, J.~Lee, T.~Jin, Y.~Mai, Y.~Zhou, Y.~Zhu, R.~Bommasani, D.~Kang, D.~Song, P.~Henderson, Y.~Su, P.~Liang, A.~Narayanan, \emph{Holistic Agent Leaderboard: The Missing Infrastructure for AI Agent Evaluation}, International Conference on Learning Representations, 2026.
 \bibitem{gaia2025leaderboard} GAIA Benchmark Authors, \emph{GAIA Leaderboard}, Hugging Face Spaces, 2025, \url{https://huggingface.co/spaces/gaia-benchmark/leaderboard}, accessed April 2026.
+\bibitem{xie2024osworld} T.~Xie, D.~Zhang, J.~Chen, X.~Li, S.~Zhao, R.~Cao, T.~J.~Hua, Z.~Cheng, D.~Shin, F.~Lei, Y.~Liu, Y.~Xu, S.~Zhou, S.~Savarese, C.~Xiong, V.~Zhong, T.~Yu, \emph{OSWorld: Benchmarking Multimodal Agents for Open-Ended Tasks in Real Computer Environments}, Advances in Neural Information Processing Systems, 2024.
+\bibitem{devlin2019bert} J.~Devlin, M.-W.~Chang, K.~Lee, K.~Toutanova, \emph{BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding}, Annual Conference of the North American Chapter of the Association for Computational Linguistics, 2019.
+\bibitem{zheng2023mtbench} L.~Zheng, W.-L.~Chiang, Y.~Sheng, S.~Zhuang, Z.~Wu, Y.~Zhuang, Z.~Lin, Z.~Li, D.~Li, E.~P.~Xing, H.~Zhang, J.~E.~Gonzalez, I.~Stoica, \emph{Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena}, Advances in Neural Information Processing Systems, 2023.
+\bibitem{hendrycks2020mmlu} D.~Hendrycks, C.~Burns, S.~Basart, A.~Zou, M.~Mazeika, D.~Song, J.~Steinhardt, \emph{Measuring Massive Multitask Language Understanding}, International Conference on Learning Representations, 2021.
+\bibitem{karp1972reducibility} R.~M.~Karp, \emph{Reducibility among Combinatorial Problems}, Complexity of Computer Computations, Springer, 1972.
+\bibitem{schroff2015facenet} F.~Schroff, D.~Kalenichenko, J.~Philbin, \emph{FaceNet: A Unified Embedding for Face Recognition and Clustering}, Conference on Computer Vision and Pattern Recognition, 2015.
+\bibitem{hu2022lora} E.~J.~Hu, Y.~Shen, P.~Wallis, Z.~Allen-Zhu, Y.~Li, S.~Wang, L.~Wang, W.~Chen, \emph{LoRA: Low-Rank Adaptation of Large Language Models}, International Conference on Learning Representations, 2022.
+\bibitem{dettmers2023qlora} T.~Dettmers, A.~Pagnoni, A.~Holtzman, L.~Zettlemoyer, \emph{QLoRA: Efficient Finetuning of Quantized LLMs}, Advances in Neural Information Processing Systems, 2023.
 
 \end{thebibliography}
 \pagenumbering{gobble}
