@@ -157,6 +157,7 @@
 \usepackage{algorithmic}
 \usepackage{url}
 \usepackage[justification=centering]{caption}
+\usepackage{framed}
 
 % -------------------------- USER SETTINGS ---------------------------
 
@@ -672,7 +673,7 @@ Intuitively, when it comes to inferring the quality of LLM's response to a given
 
 In practice, assumption that prompt features which are unrelated to it's meaning shouldn't influence LLM output isn't reasonable. LLMs in they current state are far from ideal, so certain biases and simple relationships cannot be ruled out. Thus, instead of relying solely on prompt embedding vectors, input features also contain a set of supporting values that represent certain characteristics of submitted question.
 
-Aside from prompt embedding vectors, the following simple features were used:
+Aside from prompt embedding vectors, the following scalar features were used:
 
 \subsection{Complexity Features}
 
@@ -729,18 +730,29 @@ Each domain score was defined as a ratio of words related to that domain, to tot
 
 \subsection{Task Type Features}
 
-10 boolean features defining type of the task given by a prompt were defined:
+10 boolean features encoding type of the task given by a prompt were defined:
 
 \begin{itemize}
-    \item \textbf{Expects code} - Whether prompt contains words indicating that code should be returned;
-    \item \textbf{Contains code} - Whether prompt contains code blocks;
+    \item \textbf{Contains code} - Whether prompt contains coding-related words or code blocks;
     \item \textbf{Expects math} - Whether prompt contains words indicating that some mathematical calculation should be performed;
-    \item \textbf{Contains numbers} - Whether prompt contains numbers;
-    \item \textbf{Contains math symbols} - Whether prompt contains common math symbols (i.e. equality symbol);
-    \item TODO: Continue
+    \item \textbf{Expects creativity} - Whether prompt indicates that creative writing is required;
+    \item \textbf{Expects factual information} - Whether prompt indicates that factual information is requested;
+    \item \textbf{Contains instruction keywords} - Whether prompt contains keywords that indicate instruction-following;
+    \item \textbf{Contains persona keywords} - Whether prompt contains keywords that specify a persona;
+    \item \textbf{Contains analysis keywords} - Whether prompt requests analysis;
 \end{itemize}
 
-TODO: List remaining features
+\subsection{Output Format Features}
+
+5 boolean features describing expected output were introduced:
+
+\begin{itemize}
+    \item \textbf{Expects code} - If the prompt suggests that code should be returned;
+    \item \textbf{Expects list} - If the prompt suggests that a list or enumeration should be returned;
+    \item \textbf{Expects table} - If the prompt suggests that tabular data should be returned;
+    \item \textbf{Expects JSON} - If the prompt suggests that structured JSON output should be returned;
+    \item \textbf{Expects long response} - If the prompt suggests that the response should be lengthy and exhaustive;
+\end{itemize}
 
 \section{Data Analysis \& Transformations}
 
@@ -748,11 +760,18 @@ Feature transformations were defined based on their value distributions. Two kin
 
 First, certain features show exponential behavior. Features related to prompt length are a perfect example of that [TODO: ref some plot]. Those features were transformed using a logarithm [TODO: reword] to achieve a more uniform value distribution. Small values are clipped to $10^{-6}$ to prevent them from exploding to $-\infty$. 
 
-Second, certain numeric features are dominated by zero values. Domain scores are a good example. Most prompts don't refer to anything related to finance. While distinguishing between prompts where financial language dominates from prompts that contain a handful of financial terms might be significant, simply transforming the data via a logarithm causes prompts without financial language to have scores which are similar to prompts containing only a few phrases related to finance, making those two cases hard to distinguish. Additionally, zero value dominance will negatively impact scaling. To address these issues, the transformation described by equation [TODO: ref] was introduced. Additionally, to address the scaling issue, zero values were excluded from scaling - mean and standard deviation necessary for scaling was computed from remaining values. 
+Second, certain numeric features are dominated by zero values. Domain scores are a good example. Most prompts don't refer to anything related to finance. While distinguishing between prompts where financial language dominates from prompts that contain a handful of financial terms might be significant, simply transforming the data via a logarithm causes prompts without financial language to have scores which are similar to prompts containing only a few phrases related to finance, making those two cases hard to distinguish. Additionally, zero value dominance will negatively impact scaling. To address these issues, the transformation described by equation \ref{equation:softplus-feature-transformation} was introduced. Additionally, to address the scaling issue, zero values were excluded from scaling - mean and standard deviation necessary for scaling was computed from remaining values. 
 
-TODO: equation
+\begin{align}
+\label{equation:softplus-feature-transformation}
+    & x \rightarrow \begin{cases}
+        \operatorname{softplus}(x) & \text{if } x \neq \operatorname{scale}(0) \\ 
+        -1 & \text{otherwise} 
+    \end{cases} \\
+    & \operatorname{softplus}(x) = \log(1 + e^x) 
+\end{align}
 
-Transformation is applied after scaling. Softplus operation transforms non-zero data from $(-\infty, \infty)$ range onto $(0, \infty)$, while keeping the monotonicity [TODO: beter word] relatively unchanged. To ensure a clear separation between zero and small but nonzero samples, zero values are encoded as $-1$.
+Transformation is applied after scaling. Softplus operation is applied to originally non-zero data (not equal to the value returned by scaling transformation given zero as input), transforming it from $(-\infty, \infty)$ range onto $(0, \infty)$ in a smooth way, while keeping the rate of change relatively unchanged for positive inputs. To ensure a clear separation between zero and small but nonzero samples, zero values are encoded as $-1$.
 
 [TODO: plots for each feature + chosen transforms]
 
@@ -761,15 +780,9 @@ Transformation is applied after scaling. Softplus operation transforms non-zero 
 
 A natural simplification of prompt routing problem comes from an assumption that LLM performance does not depend on the prompt. In this case, every LLM has a single score associated with them, and the problem reduces to assigning those scores based on comparison data. While this simplification makes the problem much less interesting and complex, it is more commonly used when ranking LLMs, due to capturing a general LLM quality rather than focusing on particular cases [TODO: examples, refs]. Also, exploration of this problem will serve as a good baseline for prompt-aware scoring.
 
-\subsection{Iterative Models}
-
-TODO (do I need this section?)
-
-\subsection{Non-iterative Models}
-
 The problem of scoring entries based on comparison data can be expressed more rigorously, turning it into an optimization problem with well-defined fitness metric. Some such expressions have easily computable optimal solution.
 
-\subsubsection{L1 Criterion}
+\subsection{L1 Criterion}
 
 The most natural way of expressing quality of score assignment is via accuracy - a percentage of comparisons where winning entry was assigned a higher score than the losing one. This is equivalent to minimizing the number of \textit{upsets} (comparisons such that entry A wins against entry B, but A was assigned a lower score than B). This criterion turns out to be NP-hard [TODO: ref]. However, if we take into account the magnitude of upsets (difference between scores assigned to A and B), the problem becomes solvable in polynomial time. Minimizing the sum of magnitudes can be expressed as a linear programming problem ($v_a$ represents the score assigned to entry A, and $\epsilon$ is added to prevent trivial solution of all scores being 0):
 
@@ -794,7 +807,7 @@ Then, node potentials can be interpreted entry scores.
 
 The solution to min-cost-max-flow problem also gives us an additional useful metric: percentage of "meaningful" comparisons in the comparison set. Any cycle in the network has positive cost (since all edges that don't include source and sink have positive cost), so optimal flow won't use them. Using that information, we can compute the ratio of used comparison edges (equal to total cost) to all comparisons. This quantity can be interpreted as decisiveness of comparison set - since comparison cycles can't be scored correctly, the more common they are, the less correct is it to represent LLM quality via a single, prompt-independent score.
 
-\subsubsection{L2 Criterion}
+\subsection{L2 Criterion}
 
 Minimizing squares of upset magnitudes turns out to be even simpler - it is a variation of "least squares" problem. As such, this approach was chosen.
 
@@ -863,8 +876,8 @@ The model can be described by equation \ref{eq:attention-embedding}. $E_s$ is th
 
 \begin{align}
 \label{eq:attention-embedding}
-    E(S) &= P_{out}(Attention(E_s(S))) \\
-    Attention(X) &= softmax(\frac{Q K^T(X)}{\sqrt{dim(Q)}}) V(X)
+    E(S) &= P_{out}(\operatorname{Attention}(E_s(S))) \\
+    \operatorname{Attention}(X) &= \operatorname{softmax}(\frac{Q K^T(X)}{\sqrt{dim(Q)}}) V(X)
 \end{align}
 
 Set aggregator module uses sample embeddings produced by pair encoder, outputting a single LLM embedding vector. In previous embedding models, this step was done by a simple mean computation, instead. Set aggregator uses attention mechanism. Pair embeddings are used to produce key ($K$) and value ($V$) vectors through learnable linear projections. Then, attention masks are computed by a configurable number of attention heads. This mask is then used to produce a single LLM embedding from value vectors produced from pair embeddings.
@@ -951,7 +964,14 @@ The first deep learning model that was implemented uses a simple multi-layer neu
 
 Three distinct input vectors don't have to share any characteristics, like dimensionality, scale, or importance. For each, a separate projection layer was introduced. These layers transform input vectors into representations of set dimensionality, which subsequently are concatenated and used as input to the following layers of the network.
 
-Number and sizes of hidden layers are configurable. \textit{LeakyReLU} was chosen as the activation function, with negative slope set to $0.1$. Dropout layers were introduced between each pair of hidden layers to prevent overfitting. Additionally, \textit{LayerNorm} layers were introduced for regularization, and gradient clipping was introduced to prevent gradient explosions during training.
+Model architecture is presented on diagram \ref{fig:dn-scoring-arch}. Number and sizes of hidden layers are configurable. \textit{LeakyReLU} was chosen as the activation function, with negative slope set to $0.1$. Dropout layers were introduced between each pair of hidden layers to prevent overfitting. Additionally, \textit{LayerNorm} layers were introduced for regularization, and gradient clipping was introduced to prevent gradient explosions during training.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\textwidth]{thesis/diagrams/dn-scoring.drawio.png}
+    \caption{DNN model architecture}
+    \label{fig:dn-scoring-arch}
+\end{figure}
 
 The score assignment goal that the network tries to achieve does not inherently require any specific scale of outputs. As scores are only ever used for comparison, transforming them through any strictly increasing function does not change the quality of the result - for each compared pair of models, bigger score will still be bigger after the transformation. This ambiguity is undesired and impractical from human perspective. Introducing a secondary training objective could be a solution to this problem, however it is unnecessary in this case. Instead of introducing an additional loss term, whose influence may negatively impact the primary objective, score post-processing was introduced. After training, mean and standard deviation of scores assigned to training data is computed, such that subsequent inference results can be normalized to mean 0 and standard deviation equal to 1. Additionally, scaled scores are transformed using a scaled hyperbolic tangent function onto a $(-1, 1)$ range.
 
@@ -1330,7 +1350,85 @@ TODO
 
 \chapter{Analysis of the Solution}
 
-TODO: Tests of all parts of the system, etc.
+The problem solved by the system is inherently complex and multi-dimensional [TODO: better word?]. The goal of multistep task completion while minimizing cost relies on cooperation of multiple components and subsystems. As such, when evaluating performance of the system, analysis of individual parts of the application is crucial in addition to overall quality.
+
+End-to-end system evaluation was performed using a benchmark of challenging, multistep questions, where an objectively correct answer is known, which makes automatic validation possible. Scoring component was evaluated by accuracy achieved over validation set, and it's extendability was researched by leaving one LLM out of training data, computing it's embedding vector, and evaluating scoring accuracy over it's comparison pairs. Response length prediction is evaluated in context of request cost estimation. It's impact on estimated cost is determined by swapping predicted response token count for the real value (after completing the request) and computing the cost in the same way. Additionally, the estimation method itself is analyzed by comparing it's outputs to real response cost, reported by \textit{OpenRouter}.  
+
+\section{GAIA Benchmark}
+
+To measure an overall quality of the system, \textit{GAIA} benchmark was chosen. Introduced by G.~Mialon et. al. in a paper titled \textit{GAIA: a benchmark for General AI Assistants} \cite{mialon2023gaia}, GAIA is described as a benchmark for General AI Assistants. It consists of 466 validation questions (and 300 test questions, to which correct answers are not publicly available), divided into three difficulty levels. It departs from a trend of agentic benchmarks becoming increasingly hard for humans, instead consisting of tasks that are conceptually straightforward, but requiring multiple diverse steps to complete, while paying close attention to detail.
+
+All benchmark questions require a short text response, with a single objectively correct response. All questions clearly specify expected output format, which, together with an objective true answer, makes it possible to evaluate answers by simply comparing text output of benchmarked LLM or agent against the expected true value.
+
+\begin{figure}[htbp]
+    \begin{framed}
+        If Eliud Kipchoge could maintain his record-making marathon pace indefinitely, how many thousand hours would it take him to run the distance between the Earth and the Moon its closest approach? Please use the minimum perigee value on the Wikipedia page for the Moon when carrying out your calculation. Round your result to the nearest 1000 hours and do not use any comma separators if necessary.
+    \end{framed}
+    \caption{Example GAIA question}
+    \label{figure:example-gaia-question}
+\end{figure}
+
+An example task included in \textit{GAIA} dataset (level 1) is presented on figure \ref{figure:example-gaia-question}. Computing the solution is relatively straightforward for humans, requiring finding three numeric values by searching the web, and performing a simple arithmetic operation with obtained quantities.
+
+\begin{itemize}
+    \item Eliud Kipchoge's marathon time: $2:01:09 = 7269~s$ (from: \url{https://en.wikipedia.org/wiki/Eliud_Kipchoge});
+    \item Marathon length: $42.195~km$ (from: \url{https://en.wikipedia.org/wiki/Marathon});
+    \item Minimum Moon perigee distance: $356400~km$ (from: \url{https://en.wikipedia.org/wiki/Moon});
+\end{itemize}
+
+From these quantities, the time of $17054.89~h$ can be computed. Rounding to the nearest thousand and returning the number of thousands, a correct answer of $17$ is deduced.
+
+The choice of \textit{GAIA} benchmark for system evaluation was motivated primarily by an inherently multistep nature of it's tasks, possibility of automatic response grading, and required capabilities matching those supported by the system. Most \textit{GAIA} questions require web search and file input (mostly PDF, text, and XML MS Office formats). The full list of agent capabilites required to complete \textit{GAIA} task is presented below.
+
+\begin{itemize}
+    \item \textbf{TODO:} x tasks,
+\end{itemize}
+
+Task which are impossible for the system to complete due to lack of support for required capability were excluded from the benchmark during evaluation. In total, TODO tasks (TODO \%) were skipped.
+
+\subsection{Results}
+
+\subsubsection{Reference} % TODO: better title?
+
+Human respondents achieve $92\%$ accuracy on benchmark tasks, according to original \textit{GAIA} paper \cite{mialon2023gaia}. Most mistakes were not caused by lack of capability to complete the task, but rather by simple attention faults (misreading, mistyping, etc.).
+
+As \textit{GAIA} tasks often require extensive tool use and multistep reasoning, the gap in performance achieved by single-call LLM evaluations and agentic systems is large. The original paper describes evaluation of \textit{GPT-4} with manually selected plugins, which achieved only $15\%$ overall accuracy ($30\%$ on level 1 tasks). Since the nature of the benchmark is inherently agentic, new research doesn't focus on single-call LLM performances.
+
+Performance of agentic systems on the benchmark varies, significantly improving over recent months. State-of-the-art performance improved from $33.33\%$ achieved by \textit{HuggingFace's Transformers Code Agent} \cite{roucher2024beatinggaia} using \textit{GPT-4} soon after benchmark release, to most recent $74.6\%$ \cite{gaia2025leaderboard} achieved by \textit{HAL (Hollistic Agentic Leaderboard)} agentic framework \cite{kapoor2026hal}, using \textit{Claude 4.5 Sonnet}.
+
+\subsubsection{Performance of the System}
+
+TODO
+
+\subsubsection{Performance with a Single Step Completion LLM}
+
+The system relies on dynamic LLM selection for step completion. It's impact can be measured by replacing selection logic with a single pre-defined LLM model. As the system is designed to balance task completion cost with response quality, two reference experiments were performed. In the first case, step completion LLM was set to a model known for it's high cost and competitive reasoning ability - \textit{Claude 4.6 Opus} [TODO: maybe instead choose highest prompt-invariant score? Or highest by some leaderboard?]. In the second case, one of the cheapest LLMs was chosen - TODO.
+
+TODO: results
+
+\section{Quality Prediction}
+
+TODO: Reiterate baseline results vs model results
+
+\subsection{LLM Embedding}
+
+TODO: Results of attention embedding model - should be very brief
+
+\subsection{LLMs Unseen in Comparison Data} % TODO: Improve section title?
+
+TODO: Train embedding + scoring model with one LLM removed, then compute it's embeddings and evaluate. Compare accuracy difference over pairs with that LLM, and overall.
+
+\section{Cost Estimation}
+
+TODO: Compare costs of benchmark tasks - reported by OR vs estimated after getting response vs estimated by predicting response length. Only include step execution costs - planning model is hardcoded, so we don't use cost estimation for anything in this case.
+
+\section{Example Task Execution Process}
+
+TODO: Choose some task from Gaia, show generated plan, re-evaluations, etc.
+
+\chapter{Possible Continuation} % TODO: Maybe this should be a section somewhere?
+
+TODO
 
 \chapter{Conclusion}
 
@@ -1354,6 +1452,10 @@ TODO
 \bibitem[9]{ong2025routellm} I.~Ong, A.~Almahairi, V.~Wu, W.-L.~Chiang, T.~Wu, J.~E.~Gonzalez, M.~W.~Kadous, I.~Stoica, \emph{RouteLLM: Learning to Route LLMs with Preference Data}, International Conference on Learning Representations, 2025.
 \bibitem[10]{notdiamond2024rorf} Not Diamond, \emph{RoRF: Routing on Random Forests}, \url{https://www.notdiamond.ai/blog/rorf-routing-on-random-forests-2}, 2024.
 \bibitem[11]{agashe2025agents2} S.~Agashe, K.~Wong, V.~Tu, J.~Yang, A.~Li, X.~E.~Wang, \emph{Agent S2: A Compositional Generalist-Specialist Framework for Computer Use Agents}, arXiv preprint arXiv:2504.00906, 2025.
+\bibitem[12]{mialon2023gaia} G.~Mialon, C.~Fourrier, C.~Swift, T.~Wolf, Y.~LeCun, T.~Scialom, \emph{GAIA: a benchmark for General AI Assistants}, arXiv preprint arXiv:2311.12983, 2023.
+\bibitem[13]{roucher2024beatinggaia} A.~Roucher, \emph{Our Transformers Code Agent beats the GAIA benchmark}, Hugging Face Blog, 2024, \url{https://huggingface.co/blog/beating-gaia}.
+\bibitem[14]{kapoor2026hal} S.~Kapoor, B.~Stroebl, P.~Kirgis, N.~Nadgir, Z.~S.~Siegel, B.~Wei, T.~Xue, Z.~Chen, F.~Chen, S.~Utpala, F.~Ndzomga, D.~Oruganty, S.~Luskin, K.~Liu, B.~Yu, A.~Arora, D.~Hahm, H.~Trivedi, H.~Sun, J.~Lee, T.~Jin, Y.~Mai, Y.~Zhou, Y.~Zhu, R.~Bommasani, D.~Kang, D.~Song, P.~Henderson, Y.~Su, P.~Liang, A.~Narayanan, \emph{Holistic Agent Leaderboard: The Missing Infrastructure for AI Agent Evaluation}, International Conference on Learning Representations, 2026.
+\bibitem{gaia2025leaderboard} GAIA Benchmark Authors, \emph{GAIA Leaderboard}, Hugging Face Spaces, 2025, \url{https://huggingface.co/spaces/gaia-benchmark/leaderboard}, accessed April 2026.
 
 \end{thebibliography}
 \pagenumbering{gobble}
@@ -1376,16 +1478,12 @@ If you don't need it, delete it.
 % ----------------------------  LIST OF FIGURES --------------------------------
 \listoffigures
 \thispagestyle{empty}
-% TODO
-If you don't need it, delete it.
-
 
 % -----------------------------  LIST OF TABLES --------------------------------
 \renewcommand{\listtablename}{Spis tabel}
 \listoftables
 \thispagestyle{empty}
-% TODO
-If you don't need it, delete it.
+% TODO: If you don't need it, delete it.
 
 % -----------------------------  LIST OF APPENDICES ---------------------------
 \chapter*{List of appendices}
