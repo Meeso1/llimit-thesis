@@ -200,9 +200,9 @@
 \begin{center}
 \title
 \end{center}
-TODO\\
+TODO(write)\\
 
-\noindent \textbf{Keywords:} TODO, ...
+\noindent \textbf{Keywords:} TODO(write), ...
 \end{abstract}
 }
 
@@ -216,9 +216,9 @@ TODO\\
 \tytul
 \end{center}
 
-TODO\\
+TODO(write)\\
 
-\noindent \textbf{Słowa kluczowe:} TODO, ...
+\noindent \textbf{Słowa kluczowe:} TODO(write), ...
 \end{abstract}
 }
 
@@ -261,13 +261,19 @@ TODO\\
 \chapter{Introduction}
 \markboth{}{Introduction}
 
-TODO
+Recent inventions in artificial intelligence technology, championed by large language models, were without a doubt a milestone for humanity. The selection of publicly accessible LLM models is vast, with new releases occurring weekly. While the quality of newly published LLMs keeps improving, the ever-growing number of possibilities makes optimal usage more difficult. LLMs have different strong and weak sides, support different input modalities and capabilities (like web search), and are priced by different rules.
+
+Differences between LLMs have the biggest impact during complex prompts, which require multi-domain knowledge or capabilities. Recent shift to to agentic approaches provides a partial solution to the problem of the complexity exceeding single-call "intelligence" of a given LLM. Most providers offer some kind of agentic wrapper for offered LLMs, which implement multi-turn thinking loops and tool use (for example: \textit{ChatGPT} Deep Research, \textit{Claude} Research Mode). However, the goal of these systems is simply to improve response quality while using a chosen LLM model - they don't feature dynamic LLM selection mechanisms. A multi-domain task completion quality will be bottlenecked by the aspect that least closely aligns with chosen LLM's strengths. 
+
+An argument can also be made about cost optimization. It's common that certain parts of task completion process are extremely straightforward and simple, while other require complex reasoning. While response quality would likely benefit from using a more capable and expensive LLM model for the latter, choosing a cheaper alternative for the former would likely reduce overall cost without significantly affecting output quality.
+
+The goal of this work is the implementation of an agentic system which addresses these problems. The system shall complete complex tasks by breaking them down into a set of interdependent steps, choosing the most fitting LLM for each by balancing request cost with expected output quality. The system will integrate with a wide range of state-of-the-art commercial LLM providers. Response quality will be predicted using machine learning methods, trained on human comparison datasets of LLM responses.
 
 \chapter{Related Work}
 
-Partial problems that the system solves are addressed in a number of works and solutions, both open and commercial. Task execution planning that relies on a dynamic list of steps is used by numerous, if not most, agentic systems. Agentic code editors, like \textit{Cursor} [TODO: cite], either implicitly rely on this approach to complete complex user requests, or are able to use it conditionally. Computer use agents, like \textit{Simular's} \textit{Agent S2} \cite{agashe2025agents2}, often use step-based planning as a foundation of their operations. 
+Partial problems that the system solves are addressed in a number of works and solutions, both open and commercial. Task execution planning that relies on a dynamic list of steps is used by numerous, if not most, agentic systems. Agentic code editors, like \textit{Cursor} \cite{cursor2024}, either implicitly rely on this approach to complete complex user requests, or are able to use it conditionally. Computer use agents, like \textit{Simular's} \textit{Agent S2} \cite{agashe2025agents2}, often use step-based planning as a foundation of their operations. 
 
-Dynamic selection of LLM models is researched by a range of works, albeit this problem is usually less critical than dynamic planning for most systems, since often usage of a single LLM model is sufficient for a specific kind of operation that a given solution needs to perform. I.~Ong et. al. in \textit{RouteLLM: Learning to Route LLMs with Preference Data} \cite{ong2025routellm} paper focus on routing prompts between two groups of LLMs - weaker but cheaper, and more expensive but stronger models - with the purpose of reducing average response cost while minimizing quality reduction. \textit{RoRF: Routing on Random Forests} blog post by \textit{Not Diamond} \cite{notdiamond2024rorf} describes a simpler variant of the same problem, using random forests to route prompts between pairs of LLMs. [TODO: like 1 more example].
+Dynamic selection of LLM models is researched by a range of works, albeit this problem is usually less critical than dynamic planning for most systems, since often usage of a single LLM model is sufficient for a specific kind of operation that a given solution needs to perform. I.~Ong et. al. in \textit{RouteLLM: Learning to Route LLMs with Preference Data} \cite{ong2025routellm} paper focus on routing prompts between two groups of LLMs - weaker but cheaper, and more expensive but stronger models - with the purpose of reducing average response cost while minimizing quality reduction. \textit{RoRF: Routing on Random Forests} blog post by \textit{Not Diamond} \cite{notdiamond2024rorf} describes a simpler variant of the same problem, using random forests to route prompts between pairs of LLMs. [TODO(maybe): 1 more example?].
 
 \section{Cursor}
 
@@ -300,6 +306,7 @@ Similarly to plan generation methods implemented in \textit{Cursor}, no special 
 \end{figure}
 
 \section{RouteLLM: Learning to Route LLMs with Preference Data}
+\label{section:routellm}
 
 \textit{RouteLLM} paper attempts to solve the problem of routing LLM prompts between 2 groups of models, differing in capabilities and cost. Proposed solutions can be described as probability-predicting functions $P_\theta$, such that the routing decision is then decided using the function described by equation \ref{equation:routellm-routing}, parametrized by $\alpha$. $P_\theta$ predicts probability that, for a given prompt, a model from stronger group will produce a response that is strictly better than a response of a model from weaker group. If the probability is higher then a set threshold, prompt is routed to a stronger group. Otherwise, if probability of achieving a similarly good response from weaker models is sufficient, prompt is directed to weaker group.
 
@@ -332,7 +339,7 @@ Paper proposes four distinct probability-predicting methods:
     \label{equation:routellm-swr}
         \omega'(q, q') = \gamma^{1 + S(q, q')}, \quad S(q, q') = \frac{v_q \cdot v_{q'}}{\|v_q\|\|v_{q'}\|} \cdot \max_{1 \le s \le |D|} \frac{v_{q'} \cdot v_q}{\|v_{q'}\|\|v_q\|}
     \end{equation}
-    Subsequently, a Bradley-Terry model is fit, minimizing binary cross-entropy, with sample weights given by the formula \ref{equation:routellm-swr}. It's output is then returned as predicted probability. [TODO: Does this make sense?]
+    Subsequently, a Bradley-Terry model is fit, minimizing binary cross-entropy, with sample weights given by the formula \ref{equation:routellm-swr}. It's output is then returned as predicted probability. [TODO(review): Does this make sense?]
     \item \textbf{Matrix Factorization} \\
     The model learns a bilinear scoring function, given by equation \ref{equation:routellm-matrix-factorization-score}. Then, predicted probability is given by formula \ref{equation:routellm-matrix-factorization-probability}. \\
     $v_q$, like in previous method, represents a text embedding of query $q$. $v_m$ is a learnable model tier embedding - a separate embedding is learned for each model tier identified in dataset preprocessing in section \ref{section:routellm-datasets}, not only for two model groups that routing is decided between. The model is fit through gradient descent, using \textit{Adam} optimizer and binary cross-entropy objective function.
@@ -406,8 +413,6 @@ As \textit{RoRF} was published about a month after \textit{RouteLLM} paper, eval
 
 While results are similar or better in case of \textit{RoRF}, this improvement likely comes simply from fitting routing models specifically to a given pair of LLMs, rather than training for general case.
 
-TODO: More references
-
 \chapter{System Requirements \& Constraints}
 
 The implementation of the system was preceded by defining a set of requirements that it should satisfy, as well as constraints to it's functionalities. As the system is mainly designed for personal use and demonstration purposes, rather than for a hosted instance to be accessed by general public, user-friendliness and security requirements are of secondary concern and are not discussed in this section.
@@ -421,7 +426,7 @@ The implementation of the system was preceded by defining a set of requirements 
     \item \textbf{The system should be able to use a wide variety of LLMs from different providers to complete task steps.} \\
     There are numerous LLM providers, each offering a range of models. Models differ both in "intelligence" (providers usually offer smaller and cheaper models, recommended for simple prompts, and bigger, more expensive models for complex tasks), and in domain-specific strengths. As the main idea behind the system is utilization of these differences, wide selection of LLMs that can be used for step completion is critical.
     \item \textbf{The system should handle step execution errors gracefully, continuing task completion if possible.} \\
-    The problem that the system is meant to solve is open-ended. In principle, user-requested tasks might be impossible to complete. This problem is described in greater detail in section [TODO: ref]. This property, together with relatively low reliability (at least in comparison to deterministic algorithmic approaches) of generating structured data using LLMs, makes error handling a critical aspect of the system.
+    The problem that the system is meant to solve is open-ended. In principle, user-requested tasks might be impossible to complete. This problem is described in greater detail in section \ref{section:error-recovery}. This property, together with relatively low reliability (at least in comparison to deterministic algorithmic approaches) of generating structured data using LLMs, makes error handling a critical aspect of the system.
     \item \textbf{The choice of step completion LLMs should be done based on estimated request cost and predicted quality of the response.} \\
     The system is meant to balance task completion cost with the quality of the result.
     \item \textbf{Response quality should be predicted using machine learning methods, based on the LLM and request prompt.} \\
@@ -436,22 +441,22 @@ The implementation of the system was preceded by defining a set of requirements 
 
 \begin{enumerate}
     \item \textbf{The system will use a single configured LLM model for task planning.} \\
-    Different tasks may require different level of "intelligence" for generating a list of steps. Similarly, plan reevaluation during error recovery may also vary in complexity. While estimating that complexity and choosing an LLM based on this estimation would be an interesting extension of the project, it was rejected due to excessive complexity and lack of fitting datasets. Instead, LLM model used for initial planning and reevaluation is configurable, and set to \textit{Google's} \textit{Gemini 3.1 Pro} [TODO: cite]. 
+    Different tasks may require different level of "intelligence" for generating a list of steps. Similarly, plan reevaluation during error recovery may also vary in complexity. While estimating that complexity and choosing an LLM based on this estimation would be an interesting extension of the project, it was rejected due to excessive complexity and lack of fitting datasets. Instead, LLM model used for initial planning and reevaluation is configurable, and set to \textit{Google's} \textit{Gemini 3.1 Pro} [TODO(cite)]. 
     \item \textbf{The system will only complete tasks by generating a text result.} \\
     LLMs (and adjacent models offered by the same providers) can handle a variety of tasks aside from text generation. They can generate images, execute code, perform actions on the web or in the operating system, etc. Supporting these abilities would definitely be a welcome addition to the system. However, this would considerably increase implementation complexity, and as such was rejected. 
     \item \textbf{When selecting an LLM to complete a step, the system will only consider estimated completion cost and predicted response quality.} \\
     A number of additional metrics can be considered in addition to the aforementioned. In particular, LLMs differ significantly in generation speed - predicting and incorporating response time in selection process could be an interesting addition.
     \item \textbf{Response quality will be predicted based only on the LLM and request prompt.} \\
-    As described in section [TODO: ref], step definition contains more information than just the prompt. This data could be used as prediction input, potentially improving the accuracy of assigned scores. It was decided not to do so, mainly because of lack of datasets that could be used for training.
+    As described in section \ref{section:planning-and-reevaluation}, step definition contains more information than just the prompt. This data could be used as prediction input, potentially improving the accuracy of assigned scores. It was decided not to do so, mainly because of lack of datasets that could be used for training.
 \end{enumerate}
 
 \chapter{Description of the System}
 
-The system was implemented as a REST API application, which allows users to create a task, monitor it's state, and receive the result. [TODO: update?] For simplicity, no UI was implemented - the system can be controlled by manual HTTP requests instead. While implementing a user-friendly interface would be an improvement, it isn't too interesting in the context of the problem, while relative simplicity of implemented operations makes it not required for testing and demonstration purposes.
+The system was implemented as a REST API application, which allows users to create a task, monitor it's state, and receive the result. [TODO(review): update?] For simplicity, no UI was implemented - the system can be controlled by manual HTTP requests instead. While implementing a user-friendly interface would be an improvement, it isn't too interesting in the context of the problem, while relative simplicity of implemented operations makes it not required for testing and demonstration purposes.
 
 \section{Technology selection}
 
-The system was implemented in \textit{Python} 3.13, using \textit{FastAPI} [TODO: ref] framework. Scoring models were implemented using \textit{Pytorch} and \textit{XGBoost} packages, with \textit{scikit-learn} utilities being used for preprocessing.
+The system was implemented in \textit{Python} 3.13, using \textit{FastAPI} [TODO(cite): cite or something] framework. Scoring models were implemented using \textit{Pytorch} and \textit{XGBoost} packages, with \textit{scikit-learn} utilities being used for preprocessing.
 
 \section{API Interface}
 
@@ -474,7 +479,7 @@ The system uses API key authentication. Every request requires the key to be pre
 
 \section{LLM integration}
 
-[TODO: add some reference] Integration with LLM providers is a central part of the project. Contemporary commercial LLM landscape features a high number of providers, each offering a selection of models. While certain conventions exist (for example, \texttt{openai} integration packages for various programming languages are widely adopted by different providers, offering compatible API interface), they cover only a part of functionality required by the system. While chat and one-shot completion APIs are standardized, aspects like per-request configuration or pricing information are not.
+[TODO(cite): add references to stuff described in this section, where it makes sense] Integration with LLM providers is a central part of the project. Contemporary commercial LLM landscape features a high number of providers, each offering a selection of models. While certain conventions exist (for example, \texttt{openai} integration packages for various programming languages are widely adopted by different providers, offering compatible API interface), they cover only a part of functionality required by the system. While chat and one-shot completion APIs are standardized, aspects like per-request configuration or pricing information are not.
 
 This problem is solved by \textit{OpenRouter}. \textit{OpenRouter} is an LLM gateway, offering unified API access (compatible with \texttt{openai} interface), request configuration, LLM description listing, and pricing information. This effectively means that instead of requiring a separate integration for each supported LLM provider, only a single implementation is required, drastically reducing complexity.
 
@@ -492,8 +497,9 @@ Usage of \textit{OpenRouter} also simplifies API key management. In case of dire
 Diagram \ref{fig:task-execution-flow} provides a high-level overview. Task completion process starts with user \textit{POST} request to \texttt{/tasks}, specifying the prompt, and a list of uploaded files that are required to successfully complete the task. Subsequently, step list is created based on the prompt. Steps are completed in order, based on dependencies between them. For each, a different LLM is selected to complete it, based on the prompt and estimated request cost (described in section \ref{section:llm-selection}). Some steps may define a planned re-evaluation point, in which case remaining step list is updated, based on the result of already completed steps. The same happens if step completion fails (section \ref{section:error-recovery}). Finally, the last step produces a text output, which is returned as the result of the task.
 
 \subsection{Planning and Reevaluation}
+\label{section:planning-and-reevaluation}
 
-TODO: some references etc.
+TODO(cite): some references etc.
 
 Producing a set of steps required for completion of a given task can be very easily framed as a text processing task requiring a certain level of intelligence and reasoning. Therefore, the simplest solution to that problem is just using a sufficiently good, commercial LLM. While using a high-end LLM model may seem contradictory to the objective of reducing task completion cost, the decision is justified by the fact that step planning prompt is relatively short (compared to step prompts, which may contain much more information), and that the request doesn't contain any input images or files, which cause a dominant contribution to request cost. Planning shouldn't require too extensive reasoning, either, as the actual complex task completion work should be performed when steps are executed.
 
@@ -552,7 +558,7 @@ Step completion is implemented using a work item queue, with state saved in the 
 
 \subsubsection{SSE}
 
-HTTP communication is asymmetric by design - it always starts with a request from the client, which the server handles, returning a response. This property makes dealing with long-running asynchronous processes inconvenient - the only way for the client to wait for an operation to complete is to use a pooling loop, checking the state every so often. This problem can be quite easily solved by implementing a non-HTTP notification mechanism (i.e. WebSockets [TODO: ref]). However, a simpler solution exists: Server-Sent Events [TODO: ref]. SSE stream utilizes HTTP for server-sent notifications, by simply keeping the HTTP connection open, writing each event data as a JSON line. While not aligning with HTTP design, this mechanism provides a simple alternative to pooling or using additional connection protocols.
+HTTP communication is asymmetric by design - it always starts with a request from the client, which the server handles, returning a response. This property makes dealing with long-running asynchronous processes inconvenient - the only way for the client to wait for an operation to complete is to use a pooling loop, checking the state every so often. This problem can be quite easily solved by implementing a non-HTTP notification mechanism (i.e. WebSockets [TODO(cite)]). However, a simpler solution exists: Server-Sent Events [TODO(cite)]. SSE stream utilizes HTTP for server-sent notifications, by simply keeping the HTTP connection open, writing each event data as a JSON line. While not aligning with HTTP design, this mechanism provides a simple alternative to pooling or using additional connection protocols.
 
 The system exposes an SSE endpoint at \texttt{/sse/events}. Events are produced when task state is updated in any way (step is completed, step list is generated, task finishes, etc.). Additionally, metadata filtering is implemented, making it possible to request only a certain subset of emitted events - for example, only those related to a particular task.
 
@@ -561,7 +567,7 @@ The system exposes an SSE endpoint at \texttt{/sse/events}. Events are produced 
 
 LLM-based operations require a relatively extensible error handling. First, regardless of format schemas and specifications, LLM output should be treated as text, which may or may not satisfy requested constraints. Failed format validation during step execution causes the step to be failed, triggering a reevaluation step. 
 
-Second, LLM may simply be unable to complete a step. Steps, just like tasks, aren't constrained in any way, and may specify problems that are extremely hard to solve, or which don't make sense after acquiring certain information from previous steps output or file contents. A plan for a certain mathematical task may contain a step requiring a proof of Riemann Hypothesis. Image recognition task may specify a step requiring a model to determine a scientific name of the highest tree on an attached photo, while the photo does not contain any trees. To solve this problem, step output schema specifies a "failure reason" field, and LLM that executes the step is instructed to use it if the step cannot be completed to specify the problem. Failed step subsequently causes reevaluation to be performed. Reevaluation prompt contains the failure reason, making it possible to plan subsequent steps in a way that solves the problem.
+Second, LLM may simply be unable to complete a step. Steps, just like tasks, aren't constrained in any way, and may specify problems that are extremely hard to solve, or which don't make sense after acquiring certain information from previous steps output or file contents. A plan for a certain mathematical task may contain a step requiring a proof of Riemann Hypothesis. Image recognition task may specify a step requiring a model to determine a scientific name of the highest tree on an attached photo, while the photo does not contain any trees. To solve this problem, step output schema specifies a "failure reason" field, and LLM that executes the step is instructed to use it if the step cannot be completed, to specify the problem that prevented successful step completion. Failed step subsequently causes reevaluation to be performed. Reevaluation prompt contains the failure reason, making it possible to plan subsequent steps in a way that solves the problem.
 
 \section{LLM Selection}
 \label{section:llm-selection}
@@ -581,7 +587,7 @@ Chosen metric is described by equation \ref{equation:model-selection-utility-fun
     U(C, S) = S - C - \lambda \, \operatorname{softplus}\bigl(k_c(C - \tau_c)\bigr) - \lambda \, \operatorname{softplus}\bigl(k_s(-S - \tau_s)\bigr)
 \end{equation}
 
-The main utility criterion is defined by $S-C$ term - relative score difference from the mean is treated equally to relative cost difference. Subsequent $\operatorname{softplus}$ terms discourage the choice of LLMs with extremely bad score regardless of the cost, and extremely expensive LLMs regardless of the score. $\lambda$ defines the strength of penalty terms, $\tau_c$ and $\tau_s$ - extreme value cutoffs (in standard deviations, since $S$ and $C$ are normalized), $k_c$ and $k_s$ - steepness of penalty values past the cutoff. [TODO: update utility function in code]
+The main utility criterion is defined by $S-C$ term - relative score difference from the mean is treated equally to relative cost difference. Subsequent $\operatorname{softplus}$ terms discourage the choice of LLMs with extremely bad score regardless of the cost, and extremely expensive LLMs regardless of the score. $\lambda$ defines the strength of penalty terms, $\tau_c$ and $\tau_s$ - extreme value cutoffs (in standard deviations, since $S$ and $C$ are normalized), $k_c$ and $k_s$ - steepness of penalty values past the cutoff.
 
 The following parameter values were chosen:
 
@@ -638,7 +644,7 @@ Cost of file inputs depends on their type.
 \begin{itemize}
     \item \textbf{Images:} All models specify a set price per input image, making exact cost computation trivial.
     \item \textbf{Text-based files:} Text files, and files converted to text during preprocessing (like Office XML formats), are included in input prompt, meaning that they influence the cost by incrementing the number of input tokens. Their cost can be estimated in the same way as input token cost - by tokenization.
-    \item \textbf{Audio:} Audio input is generally priced as input tokens, at the same per-token rate. [TODO: maybe just tokenize?]
+    \item \textbf{Audio:} Audio input is generally priced as input tokens, at the same per-token rate. [TODO(maybe): maybe just tokenize?]
     \item \textbf{Video:} Video input pricing is not returned by \textit{OpenRouter}. Lack of any pricing information severely limits possible estimation methods. Due to these factors, only a rough estimation based on file size and image input price could be implemented.
     \item \textbf{PDFs:} PDF input files are priced differently, based on requested processing mode. If text processing is chosen, text content is extracted from the file and priced as input tokens. Total text token count is estimated during file preprocessing, in the same way as prompt token count. If OCR processing is requested, PDF is priced per page - page count is computed together with text token count during preprocessing. In case of native processing, files are tokenized in model-specific way, making exact computation impossible. File token count is estimated based on text content and number of images contained in the PDF. 
 \end{itemize}
@@ -646,31 +652,31 @@ Cost of file inputs depends on their type.
 \subsection{Selection Restrictions}
 \label{section:model-restriction}
 
-[TODO: reference assumptions/introduction] The system is designed to be independent from the set of LLMs whose prompt and response data was included in the dataset used for scoring model creation, handling unknown LLM IDs and assigning scores based on certain mean LLM representation. This requirement ensures that the set of LLM models available through \textit{OpenRouter} doesn't need to be restricted in any way. While useful in practice, this characteristic is undesired when testing the system. For that purpose, a possibility of limiting the set of available LLMs was introduced. If the list of allowed model names is set through an API endpoint, Only specified LLMs will be used for step completion. This ensures that, when the system is tested, all available LLMs can be scored without falling back to average LLM representation.
+Requirements described in section \ref{section:requirements} state that the system should be independent from the set of LLMs whose prompt and response data was included in the dataset used for scoring model creation, handling unknown LLM IDs and assigning scores based on certain mean LLM representation. This requirement ensures that the set of LLM models available through \textit{OpenRouter} doesn't need to be restricted in any way. While useful in practice, this characteristic is undesired when testing the system. For that purpose, a possibility of limiting the set of available LLMs was introduced. If the list of allowed model names is set through an API endpoint, Only specified LLMs will be used for step completion. This ensures that, when the system is tested, all available LLMs can be scored without falling back to average LLM representation.
 
 \chapter{Scoring}
 
-TODO
+Prediction of expected quality of the response that chosen LLM would return, given a certain prompt, is the main research aspect of this work. As described in section \ref{section:llm-selection}, predicted LLM scores, along with estimated request cost, are used to determine which LLM should be utilized while completing a step. 
 
 \section{Dataset Selection}
 \label{section:dataset-selection}
 
-The title of the most popular human-evaluated LLM preference dataset without a doubt belongs to \textit{Chatbot Arena Conversations} [TODO: ref]. It is used as primary human-evaluated dataset in referenced works [TODO: verify and ref]. 
+The title of the most popular human-evaluated LLM preference dataset without a doubt belongs to \textit{Chatbot Arena Conversations} [TODO(cite)]. It is often used as the primary human-evaluated dataset in works researching prompt routing methods, like \textit{RouteLLM} paper \cite{ong2025routellm}, described in section \ref{section:routellm}.
 
 \textit{Chatbot Arena Conversations} data consists of a pair of responses from different LLM models to a single user prompt, along with a comparison label, determining which model's answer is considered better by the user. When comparison is unclear, the label can also indicate that both responses were sufficient for a given query, or that neither model managed to produce a good answer. Selection of LLMs is sufficiently wide for a model to learn a broad spectrum of differences between different LLM models, while prompts span a variety of topics. 
 
-However, there is a crucial issue: published in 2022 [TODO: verify], \textit{Chatbot Arena Conversations} dataset only includes comparisons between rather old LLM models. This isn't a disqualifying problem, as my work doesn't focus on particular LLM models. Though, A decision to use this dataset would require two important implications: that human preference during evaluation of a pair of responses remains unchanged, and that the general distribution of responses produced by LLMs is similar.
+However, there is a crucial issue: published in 2023, \textit{Chatbot Arena Conversations} dataset only includes comparisons between rather old LLM models. This isn't a disqualifying problem, as my work doesn't focus on particular LLM models. Though, A decision to use this dataset would require two important implications: that human preference during evaluation of a pair of responses remains unchanged, and that the general distribution of responses produced by LLMs is similar.
 
 It's hard to evaluate how close to the truth the first assumption is. While human preferences likely did not change drastically over the last four years, expectations of what LLMs should be able to do did undergo an undeniable change, simply due to their capabilities increasing. Another significant difference may be caused by a wider adoption - people whose responses were used in \textit{Chatbot Arena Conversations} dataset belonged to a significantly narrower group of "early adopters" of LLM technology, compared to a group of LLM users today.
 
-These reasons prompted me to decide to rely on a newer alternative to \textit{Chatbot Arena Conversations} dataset. Collected and released by the same organization (\textit{LMSYS} [TODO: ref]), \textit{LMArena Human Preference} is a successor of aforementioned dataset. It's structure closely resembled \textit{Chatbot Arena Conversations}, also including human comparison results over a pair of LLM responses to the same prompt. Additionally, the dataset includes a range of common prompt labels [TODO: describe], which can be used as additional features in any prediction task. \textit{LMArena Human Preference} is also an improvement in terms of size. It contains around 140 thousand comparison pairs (compared to \textit{Chatbot Arena Conversations}'s 33 thousand), and includes responses from 53 different models (compared to \textit{Chatbot Arena Conversations}'s 20).
+These reasons prompted me to decide to rely on a newer alternative to \textit{Chatbot Arena Conversations} dataset. Collected and released by the same organization (\textit{LMSYS} [TODO(cite): IDK if that should be cited]), \textit{LMArena Human Preference} [TODO(cite): dataset-specific citation] is a successor of aforementioned dataset. It's structure closely resembled \textit{Chatbot Arena Conversations}, also including human comparison results over a pair of LLM responses to the same prompt. \textit{LMArena Human Preference} is also an improvement in terms of size. It contains around 140 thousand comparison pairs (compared to \textit{Chatbot Arena Conversations}'s 33 thousand), and includes responses from 53 different models (compared to \textit{Chatbot Arena Conversations}'s 20).
 
 It's important to note that due to a very similar structure, these datasets can be used interchangeably. Due to previously mentioned reasons, mainly \textit{LMArena Human Preference} was used for model training and evaluation throughout this work. However, comparisons between datasets are made where relevant, highlighting important differences between their data.
 
 \section{Preprocessing \& Feature Selection}
 \label{section:preprocessing-and-features}
 
-Intuitively, when it comes to inferring the quality of LLM's response to a given input, the most important aspect of that prompt should be it's semantic meaning - ideally, prompts that are equivalent when it comes to meaning, differing only in wording, should produce the same answer. Semantic meaning of a given text can be captured via a range of specialized text embedding models, which, given an input, return a vector that should be useful for a range of classification or regression tasks. [TODO: references, examples]. As such, prompt embedding vectors are a primary candidate for model input features.
+Intuitively, when it comes to inferring the quality of LLM's response to a given input, the most important aspect of that prompt should be it's semantic meaning - ideally, prompts that are equivalent when it comes to meaning, differing only in wording, should produce the same answer. Semantic meaning of a given text can be captured via a range of specialized text embedding models, which, given an input, return a vector that should be useful for a range of classification or regression tasks. As such, prompt embedding vectors are the primary candidate for model input features. Computation of embedding vectors was implemented using \texttt{sentence-transformers} Python library [TODO(cite], which offers a wide range of embedding models through an unified interface.
 
 In practice, assumption that prompt features which are unrelated to it's meaning shouldn't influence LLM output isn't reasonable. LLMs in they current state are far from ideal, so certain biases and simple relationships cannot be ruled out. Thus, instead of relying solely on prompt embedding vectors, input features also contain a set of supporting values that represent certain characteristics of submitted question.
 
@@ -759,9 +765,9 @@ Each domain score was defined as a ratio of words related to that domain, to tot
 
 Feature transformations were defined based on their value distributions. Two kinds of transformations were defined for numeric data, described further in this section. Aside from these transformations, all numeric features were scaled to mean 0 and standard deviation equal to 1.
 
-First, certain features show exponential behavior. Features related to prompt length are a perfect example of that [TODO: ref some plot]. A logarithmic transformation is applied to such features to compress their range and obtain a more uniform value distribution. Small values are clipped to $10^{-6}$ to prevent them from collapsing to $-\infty$. 
+First, certain features show exponential behavior. Features related to prompt length are a perfect example of that - for example, character count (presented on figure \ref{figure:character-count-distribution}). A logarithmic transformation is applied to such features to compress their range and obtain a more uniform value distribution. Small values are clipped to $10^{-6}$ to prevent them from collapsing to $-\infty$. 
 
-Second, certain numeric features are dominated by zero values. Domain scores are a good example. Most prompts don't refer to anything related to finance. While distinguishing between prompts where financial language dominates from prompts that contain a handful of financial terms might be significant, simply transforming the data via a logarithm causes prompts without financial language to have scores which are similar to prompts containing only a few phrases related to finance, making those two cases hard to distinguish. Additionally, zero value dominance will negatively impact scaling. To address these issues, the transformation described by equation \ref{equation:softplus-feature-transformation} was introduced. Additionally, to address the scaling issue, zero values were excluded from scaling - mean and standard deviation necessary for scaling was computed from remaining values. 
+Second, certain numeric features are dominated by zero values. Domain scores are a good example - for instance, science domain score (presented on figure \ref{figure:science-domain-score-distribution}). Most prompts don't refer to anything related to science. While distinguishing between prompts where scientific language dominates from prompts that contain a handful of scientific terms might be significant, simply transforming the data via a logarithm causes prompts without scientific language to have scores which are similar to prompts containing only a few phrases related to science, making those two cases hard to distinguish. Additionally, zero value dominance will negatively impact scaling. To address these issues, the transformation described by equation \ref{equation:softplus-feature-transformation} was introduced. Additionally, to address the scaling issue, zero values were excluded from scaling - mean and standard deviation necessary for scaling was computed from remaining values.
 
 \begin{align}
 \label{equation:softplus-feature-transformation}
@@ -774,7 +780,30 @@ Second, certain numeric features are dominated by zero values. Domain scores are
 
 Transformation is applied after scaling. Softplus operation is applied to originally non-zero data (not equal to the value returned by scaling transformation given zero as input), transforming it from $(-\infty, \infty)$ range onto $(0, \infty)$ in a smooth way, while keeping the rate of change relatively unchanged for positive inputs. To ensure a clear separation between zero and small but nonzero samples, zero values are encoded as $-1$.
 
-[TODO: plots for each feature + chosen transforms]
+Distributions of example features before and after transformations are displayed on figures \ref{figure:character-count-distribution}, \ref{figure:inverse-token-type-ratio-distribution} and \ref{figure:science-domain-score-distribution}.
+
+% TODO(maybe): Maybe add information about which features are logarithmic etc. somewhere
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{thesis/plots/character-count.png}
+    \caption{Character count distribution before and after transformations}
+    \label{figure:character-count-distribution}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{thesis/plots/inverse-token-type-ratio.png}
+    \caption{Inverse token-type ratio distribution before and after transformations}
+    \label{figure:inverse-token-type-ratio-distribution}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{thesis/plots/science-domain-score.png}
+    \caption{Science domain score distribution before and after transformations}
+    \label{figure:science-domain-score-distribution}
+\end{figure}
 
 \section{Prompt-invariant Scoring}
 \label{section:prompt-invariant-scoring}
@@ -804,7 +833,7 @@ This criterion can be equivalently formulated via a min-cost-max-flow problem.
 
 Then, node potentials can be interpreted entry scores.
 
-[TODO: results]
+[TODO(write): results]
 
 The solution to min-cost-max-flow problem also gives us an additional useful metric: percentage of "meaningful" comparisons in the comparison set. Any cycle in the network has positive cost (since all edges that don't include source and sink have positive cost), so optimal flow won't use them. Using that information, we can compute the ratio of used comparison edges (equal to total cost) to all comparisons. This quantity can be interpreted as decisiveness of comparison set - since comparison cycles can't be scored correctly, the more common they are, the less correct is it to represent LLM quality via a single, prompt-independent score.
 
@@ -812,7 +841,7 @@ The solution to min-cost-max-flow problem also gives us an additional useful met
 
 Minimizing squares of upset magnitudes turns out to be even simpler - it is a variation of "least squares" problem. As such, this approach was chosen.
 
-[TODO: results]
+[TODO(write): results]
 
 Turns out that this criterion results in a significantly better accuracy than linear one. As such, it's accuracy will be used as baseline for other models. 
 
@@ -861,17 +890,17 @@ In addition to distinguishability accuracy, two other, simpler metrics were intr
 
 As described in section \ref{section:preprocessing-and-features}, text embedding vectors are used as input features. As LLM embeddings are computed from both prompts and responses, text embedding vectors of both are included in input data. Additionally, certain handcrafted response features are also included. As prompts are of secondary importance scalar prompt features described in section \ref{section:preprocessing-and-features} were not used.
 
-[TODO: list features]
+[TODO(write): list features]
 
 \subsection{DNN-based Embedding}
 
 The simplest implementation of embedding model is simply a multi-layer perceptron. \textit{LeakyReLU} activation function was used, and dropout layers were introduced to prevent overfitting. Hidden layer sizes (and their number) are configurable.
 
-Model was trained using triplet margin loss \cite{schroff2015facenet}, given by formula [TODO: ref]. Training sample features three prompt and response pairs: anchor, positive, and negative. Positive pair is produced by the same LLM as anchor, while negative pair is produced by a different LLM. Loss criterion encourages the model to produce embeddings such that the distance between anchor and positive embeddings is smaller than between anchor and negative (plus a margin).
+Model was trained using triplet margin loss \cite{schroff2015facenet}, given by formula [TODO(write): equation + reference here]. Training sample features three prompt and response pairs: anchor, positive, and negative. Positive pair is produced by the same LLM as anchor, while negative pair is produced by a different LLM. Loss criterion encourages the model to produce embeddings such that the distance between anchor and positive embeddings is smaller than between anchor and negative (plus a margin).
 
-Additionally, KL loss was introduced to encourage a sample embeddings to follow a normal distribution.
+Additionally, KL loss [TODO(cite)] was introduced to encourage a sample embeddings to follow a normal distribution.
 
-[TODO: results]
+[TODO(write): results]
 
 \subsection{Tuning-based Embedding}
 
@@ -879,9 +908,9 @@ Text embedding vectors used by DNN embedding model are generated using a pre-tra
 
 Tuning-based embedding model does just that. For efficiency, only last two layers of the model were unfrozen. To ensure that embedding dimension is configurable and does not depend on the choice of transformer model, projection layer was added. The same loss criterion was used as in previous approach - triplet margin and KL loss.
 
-[TODO: It might be a good idea to improve impl there - scoring transformer does things better]
+[TODO(maybe): It might be a good idea to improve impl there - scoring transformer does things better]
 
-[TODO: results]
+[TODO(write): results]
 
 \subsection{Attention Embedding}
 
@@ -915,11 +944,11 @@ Set aggregator module uses sample embeddings produced by pair encoder, outputtin
 
 The model is trained using a supervised contrastive loss. In each batch, multiple embeddings are computed for each model, using different subsets of samples. Loss criterion encourages representations of the same model to be closer to each other than to all other representations. This directly represents the distinguishability requirement - embeddings produced by different subsets of samples from the same LLM should be different than embeddings of other LLMs.
 
-[TODO: formulas]
+[TODO(write): loss formulas]
 
 \subsubsection{Results}
 
-TODO
+TODO(write)
 
 \subsection{Prompt-invariant Embedding-based Models}
 \label{section:prompt-invariant-embedding-based-models}
@@ -930,17 +959,18 @@ To validate that hypothesis, gradient boosting model was implemented. The model 
 
 \subsubsection{Results}
 
-TODO
+TODO(write)
 
 \section{Simple Models}
 
 \subsection{Gradient Boosting Model}
+\label{section:scoring-gb}
 
-[TODO: What is gradient boosting?]
+[TODO(write): What is gradient boosting?]
 
 TODO: swap with DNN model (but move i.e. checkpointing there)
 
-Gradient boosting models are a common first choice when developing a machine learning solution for regression and classification problems. They are usually quick to learn various simple and intermediate patterns from the data. [TODO: verify] Additionally, their structure makes them relatively interpretable (especially in comparison to various neural network-based models) - as gradient boosting model is simply an ensemble of decision trees, nodes of these trees can be analyzed to find certain patterns about input to output relationships.
+Gradient boosting models are a common first choice when developing a machine learning solution for regression and classification problems. They are usually quick to learn various simple and intermediate patterns from the data. Additionally, their structure makes them relatively interpretable (especially in comparison to various neural network-based models) - as gradient boosting model is simply an ensemble of decision trees, nodes of these trees can be analyzed to find certain patterns about input to output relationships.
 
 Instead of implementing a separate, prompt-aware gradient boosting model, implementation described in section \ref{section:prompt-invariant-embedding-based-models} was extended, making input data used for scoring configurable. Based on configuration, in addition to LLM embeddings model can rely on prompt embedding vectors, as well as scalar prompt features.
 
@@ -955,7 +985,7 @@ To monitor learning process of the gradient boosting model, the following metric
 
 \begin{itemize}
     \item \textbf{Standard deviation of predictions} \\
-    TODO: does this make sense in scoring model? As the number of decision trees in gradient boosting model increases, the model should be able to distinguish between more samples, returning more diversified outputs. Each appended regressor represents a new set of prediction rules, composed with a goal of distinguishing between a subset of samples, such that each group can be assigned a more accurate output value. This process implies that standard deviation of output values should increase during fitting, approaching a constant when training stalls.
+    TODO(review): does this make sense in scoring model? As the number of decision trees in gradient boosting model increases, the model should be able to distinguish between more samples, returning more diversified outputs. Each appended regressor represents a new set of prediction rules, composed with a goal of distinguishing between a subset of samples, such that each group can be assigned a more accurate output value. This process implies that standard deviation of output values should increase during fitting, approaching a constant when training stalls.
     \item \textbf{Mean new tree contribution} \\
     New decision trees are appended to the gradient boosting ensemble with the goal of changing it's prediction in a certain way. The magnitude of this change can be tracked - it's value is given by equation \ref{equation:scoring-gb-new-tree-contribution}. Recorded values of this measure are expected to decrease to zero during training process, as the model learns details of lower and lower importance. 
     \begin{equation}
@@ -972,7 +1002,7 @@ To monitor learning process of the gradient boosting model, the following metric
 
 \subsubsection{Results}
 
-TODO
+TODO(write)
 
 \subsection{DNN Model}
 \label{section:dnn-model}
@@ -1066,7 +1096,7 @@ Each metric is computed separately on training and validation sets.
 
 \subsubsection{Results}
 
-TODO
+TODO(write)
 
 \section{Complex Models}
 
@@ -1076,13 +1106,13 @@ Sentence encoding transformers are a useful tool that transform text into a fixe
 
 The core of the transformer model is a pretrained sentence transformer model, which is being fine-tuned during the training process. The output of the transformer model is passed to a scoring head, which consists of a small (configurable) number of dense layers, using \textit{LeakyReLU} activation functions (with negative slope equal to $0.1$) and dropout layers. Scoring head module also takes LLM embeddings and scalar prompt features as inputs (since, naturally, sentence transformer module only takes text as input). These input vectors are initially passed through projection layers, similarly to what is described in \ref{section:dnn-model}.
 
-The core transformer model is loaded from \textit{HuggingFace} using \texttt{sentence-transformers} library. [TODO: something more]. Wide variety of available models make it possible to test different options, with varying parameter counts, output dimensionalities, and architectures.
+The core transformer model is loaded from \textit{HuggingFace} [TODO(cite)?] using \texttt{sentence-transformers} library [TODO(cite)]. Wide variety of available models make it possible to test different options, with varying parameter counts, output dimensionalities, and architectures.
 
 The same loss functions were implemented as in previously described models (in section \ref{section:dnn-model}). Furthermore, the same arguments prompted the decision to leave score values unconstrained during training, adding normalization and hyperbolic tangent transformation as a post-processing step, instead. Transformer model also uses the same state reverting mechanism, preventing loss of quality due to overfitting. Additionally, since training process of this model is significantly more time-consuming, checkpointing was implemented, saving model state every few epochs, which proved useful in case of crashes during training (mostly due to out-of-memory errors).
 
 \subsubsection{Fine-tuning Methods}
 
-A number of fine-tuning methods were implemented. Initially, the easiest approach involved simply unfreezing $n$ final layers of the model. This turned out to produce terrible results, while also not reducing the number of trainable parameters enough. [TODO: something more]. \textit{LoRA} and \textit{QLoRA} methods were implemented as alternatives. The main idea behind \textit{LoRA} (or \textit{Low Rank Adaptation}), described by Hu et. al. in \textit{LoRA: Low-Rank Adaptation of Large Language Models} paper \cite{hu2022lora}, is the introduction of a smaller number of new, trainable parameters, while keeping original model weights frozen. Effective, altered model weights are computed according to equation \ref{eq:lora}, where $r$ is a configurable rank of the transformation. [TODO: ref + some justification?]
+A number of fine-tuning methods were implemented. Initially, the easiest approach involved simply unfreezing $n$ final layers of the model. This turned out to produce terrible results, while also not reducing the number of trainable parameters enough. [TODO(maybe): something more]. \textit{LoRA} and \textit{QLoRA} methods were implemented as alternatives. The main idea behind \textit{LoRA} (or \textit{Low Rank Adaptation}), described by Hu et. al. in \textit{LoRA: Low-Rank Adaptation of Large Language Models} paper \cite{hu2022lora}, is the introduction of a smaller number of new, trainable parameters, while keeping original model weights frozen. Effective, altered model weights are computed according to equation \ref{eq:lora}, where $r$ is a configurable rank of the transformation.
 
 \begin{align}
 \label{eq:lora}
@@ -1108,7 +1138,7 @@ The model is designed to learn most information required for score prediction th
 
 To address this issue, simple concatenation of projections of scoring head input vectors was replaced by another combining operation. The goal is to discourage the model from learning scores that depend only on LLM embeddings, and instead encourage it to produce scores based on certain interactions between prompt representation and LLM embedding. To encode that interaction, scalar product was used. Scoring head module takes as input the scalar product of LLM embedding projection, and concatenated prompt embedding and scalar prompt features projections. As scalar product requires arguments to be of the same dimensionality, projection layer sizes were adjusted. Size of scalar features projection is configurable, with prompt embedding projection being twice as big, and LLM embedding projection - three times as big.
 
-Of course, this approach does not guarantee that the model cannot ignore prompts. [TODO: handle zeroing prompt text input while keeping prompt features input]. To achieve that, while retaining LLM embedding information, transformer module would need to learn to output a constant, non-zero vector for every prompt. Importantly, though, this state doesn't block the gradient flow to transformer module - even if the model initially does learn to ignore prompt information, it should, theoretically, be able to continue learning prompt-specific relationships after reaching optimal prompt-invariant scoring accuracy.
+Of course, this approach does not guarantee that the model cannot ignore prompts. To achieve that, while retaining LLM embedding information, transformer module would need to learn to output a constant, non-zero vector for every prompt. Importantly, though, this state doesn't block the gradient flow to transformer module - even if the model initially does learn to ignore prompt information, it should, theoretically, be able to continue learning prompt-specific relationships after reaching optimal prompt-invariant scoring accuracy.
 
 \subsubsection{Loss Functions}
 
@@ -1154,7 +1184,7 @@ Orthogonalization is performed using Newton-Schulz iterative method. It is an ap
 
 \subsubsection{Results}
 
-TODO
+TODO(write)
 
 \subsection{Response Predictive Model}
 
@@ -1181,7 +1211,7 @@ Modular structure of response predictive model makes it more interpretable than 
 
 Due to relative complexity of training process of response predictive model, it requires a more complex loss function design than other models. Using a simpler design (i.e. just ranking loss) ultimately leads to a "collapse" to a simpler, locally optimal state. For example, if no effort is made to ensure predicted and encoded representations are similar, scoring module can just learn to treat both types of representations differently. 
 
-Four loss components are combined, according to equation \ref{equation:response-predictive-loss}. Weights $k_\text{pred}$, $k_\text{repr}$ and $k_\text{KL}$ are configurable.
+Six loss components are combined, according to equation \ref{equation:response-predictive-loss}. Weights $k_\text{pred}$, $k_\text{repr}$ and $k_\text{KL}$ are configurable.
 
 \begin{align}
 \label{equation:response-predictive-loss}
@@ -1214,7 +1244,7 @@ Second criterion encodes prediction accuracy. It encourages predictor module to 
 
 Predictor loss component is additionally weighted by function $w(n) = \max(1, \frac{n}{n_w})$, where $n$ is the current epoch number. At the beginning of training, response representations produced by predictor module are highly random. There's no point in training response encoder to produce outputs that are similar to such random noise. $w(n)$ gradually ramps up the importance of that loss criterion as training progresses and predictor starts learning. 
 
-Fourth criterion is given by equation \ref{equation:kl-anchor-loss}. It is a KL loss term, encouraging a normalized distribution of response embeddings. In particular, this prevents initial representation collapse to a single value - it is a trivially optimal solution to the second and third loss criterion. Importances of loss criteria are controlled by configurable weights. [TODO: cite something + explain]
+Fourth criterion is given by equation \ref{equation:kl-anchor-loss}. It is a KL loss [TODO(cite)] term, encouraging a normalized distribution of response embeddings. In particular, this prevents initial representation collapse to a single value - it is a trivially optimal solution to the second and third loss criterion.
 
 \begin{equation}
 \label{equation:kl-anchor-loss}
@@ -1228,7 +1258,7 @@ Fifth criterion is given by equation \ref{equation:score-consistency-loss}. It e
     \mathcal{L}_\text{consistency} = \frac{1}{n} \sum_{i=0}^{n} (Score(\hat{r}_i) - Score(r_i))^2
 \end{equation}
 
-Last criterion is given by equation \ref{equation:distribution-loss}. It is a sum of Jeffrey's divergences between encoded and predicted values of each response representation component. [TODO: cite something + explain]
+Last criterion is given by equation \ref{equation:distribution-loss}. It is a sum of Jeffrey's divergences [TODO(cite)] between encoded and predicted values of each response representation component.
 
 \begin{align}
 \label{equation:distribution-loss}
@@ -1238,11 +1268,11 @@ Last criterion is given by equation \ref{equation:distribution-loss}. It is a su
 
 \subsubsection{Results}
 
-TODO
+TODO(write)
 
 \subsection{Multistage Models}
 
-Models described in this section are focusing on assigning a score based on prompt and LLM information. In some cases, it's possible to at least partially interpret their decisions ([TODO: ref]), but in general this formulation of the task does not imply any interpretability. To help with that, model chaining mechanism was introduced. Taking advantage of the fact that scores learned during training are not constrained in any way, given a trained scoring model as "base", another can be fitted on it's errors, attempting to predict the difference between it's predecessor and the true value. Final scores are defined as the sum of both predictions.
+Models described in this section are focusing on assigning a score based on prompt and LLM information. While certain metrics were introduced to at least partially interpret their decisions (described in sections \ref{section:dnn-model-metrics} and \ref{equation:scoring-gb-metrics}), but in general this formulation of the task does not imply any interpretability. To help with that, model chaining mechanism was introduced. Taking advantage of the fact that scores learned during training are not constrained in any way, given a trained scoring model as "base", another can be fitted on it's errors, attempting to predict the difference between it's predecessor and the true value. Final scores are defined as the sum of both predictions.
 
 We can describe model chaining via equation \ref{equation:model-chaining}. The main interpretability benefit comes from a possibility of constraining input values passed to each model - $I_k$ for a model given by $Score_k$. By gradually extending the set of input components, impact of introduction of each component is clearly visible as an increase in joint model performance quality. 
 
@@ -1255,7 +1285,7 @@ In LLM scoring task, multi-stage models can be especially useful when a prompt-i
 
 An additional advantage of multi-stage approach is faster training. Complex models may take multiple epochs before reaching the optimal prompt-invariant accuracy. If prompt-invariant model is used as base, however, optimal prompt-invariant accuracy is the starting point.
 
-TODO: results
+TODO(write): results
 
 \chapter{Response Length Prediction}
 \label{section:length-prediction}
@@ -1272,7 +1302,7 @@ While presence of LLM IDs in input data does make LLM embeddings redundant, it w
 
 Output of response prediction models is the token count of the response. To compute it, \texttt{tiktoken} tokenizer is used. Similarly to scalar prompt features, output data is transformed to make prediction easier. Logarithm of token counts is taken, and resulting values are normalized to mean 0 and standard deviation equal to 1. Models learn to predict these values, and during inference inverse transformations are used to reconstruct the token count.
 
-[TODO: Plot comparing original and transformed output lenghts]
+[TODO(write): Plot comparing original and transformed output lenghts]
 
 \section{Metrics}
 \label{section:length-prediction-metrics}
@@ -1312,11 +1342,11 @@ Input feature vector $x$ consists of a configurable subset of prompt features. T
 
 \subsubsection{Results}
 
-TODO
+TODO(write)
 
 \subsection{Gradient Boosting Model}
 
-Gradient boosting length prediction model is very similar to it's equivalent used for scoring, described in section [TODO: ref]. The model uses the same configurable input feature set, consisting of prompt embedding vectors, scalar prompt features, and LLM embeddings, additionally extended by one-hot-encoded LLM IDs. Output values that the model is fitted to predict are response length deviations from average values for a given model. 
+Gradient boosting length prediction model is very similar to it's equivalent used for scoring, described in section \ref{section:scoring-gb}. The model uses the same configurable input feature set, consisting of prompt embedding vectors, scalar prompt features, and LLM embeddings, additionally extended by one-hot-encoded LLM IDs. Output values that the model is fitted to predict are response length deviations from average values for a given model. 
 
 Contrary to scoring problem, length prediction task does not require a sophisticated objective function design. Correctness of a given score assignment depended on the score assigned to the other sample in the training pair, requiring custom solutions. As length prediction is a straightforward regression task, mean squared error is used as loss function.
 
@@ -1334,7 +1364,7 @@ In addition to metrics described in section \ref{section:length-prediction-metri
 
 \subsubsection{Results}
 
-TODO
+TODO(write)
 
 \subsection{DNN Model}
 
@@ -1363,7 +1393,7 @@ Additional metrics were introduced as an extensions of the set described in sect
 
 \subsubsection{Results}
 
-TODO
+TODO(write)
 
 \chapter{Analysis of the Solution}
 
@@ -1427,29 +1457,29 @@ Performance of agentic systems on the benchmark varies, significantly improving 
 
 \subsubsection{Performance of the System}
 
-TODO
+TODO(write)
 
 \subsubsection{Performance with a Single Step Completion LLM}
 
-The system relies on dynamic LLM selection for step completion. It's impact can be measured by replacing selection logic with a single pre-defined LLM model. As the system is designed to balance task completion cost with response quality, two reference experiments were performed. In the first case, step completion LLM was set to a model known for it's high cost and competitive reasoning ability - \textit{Claude 4.6 Opus} [TODO: maybe instead choose highest prompt-invariant score? Or highest by some leaderboard?]. In the second case, one of the cheapest LLMs was chosen - TODO.
+The system relies on dynamic LLM selection for step completion. It's impact can be measured by replacing selection logic with a single pre-defined LLM model. As the system is designed to balance task completion cost with response quality, two reference experiments were performed. In the first case, step completion LLM was set to a model known for it's high cost and competitive reasoning ability - \textit{Claude 4.6 Opus} [TODO(review): maybe instead choose highest prompt-invariant score? Or highest by some leaderboard?]. In the second case, one of the cheapest LLMs was chosen - TODO(review).
 
-TODO: results
+TODO(write): results
 
 \section{Quality Prediction}
 
-TODO: Reiterate baseline results vs model results
+TODO(write): Reiterate baseline results vs model results
 
 \subsection{LLM Embedding}
 
-TODO: Results of attention embedding model - should be very brief
+TODO(write): Results of attention embedding model - should be very brief
 
-\subsection{Extension to Unseen LLMs} % TODO: Improve section title?
+\subsection{Extension to Unseen LLMs}
 
 As described in section \ref{section:requirements}, response quality prediction is meant to be extendable to new LLMs requiring only prompt and response data - without relying on human-annotated comparison data. This requirement resonates in the design of scoring models. Instead of relying directly on LLM ID provided in input data, LLM embedding sub-models are utilized.
 
 To evaluate effectiveness of extending existing models to new LLMs, accuracies were compared between scoring models trained on full comparison dataset, and models trained on the dataset with a single LLM comparison excluded. After fitting, embedding vector of withheld LLM was computed using embedding sub-model, and evaluation was performed, using computed vector as representation of the excluded LLM.
 
-TODO: Results
+TODO(write): Results
 
 \section{Cost Estimation}
 
@@ -1459,25 +1489,25 @@ During every task step execution, three values are recorded:
 
 \begin{itemize}
     \item Estimated request cost based on predicted response token count, computed before request is made, and used during model selection;
-    \item Estimated request cost based on real response token count, computed in the same way as previous quantity, but using response token count reported by the LLM provider; % TODO: Estimated cost might be actually different in the system - I think we also use input token count from provider or sth like that. This should be fixed.
+    \item Estimated request cost based on real response token count, computed in the same way as previous quantity, but using response token count reported by the LLM provider; % TODO(review): Estimated cost might be actually different in the system - I think we also use input token count from provider or sth like that. This should be fixed.
     \item Real request cost, reported by \textit{OpenRouter}.
 \end{itemize}
 
 Costs were recorded during system evaluation on \textit{GAIA} benchmark.
 
-TODO: results
+TODO(write): results
 
 \section{Example Task Execution Process}
 
-TODO: Choose some task from Gaia, show generated plan, re-evaluations, etc.
-
-\chapter{Possible Continuation} % TODO: Maybe this should be a section somewhere?
-
-TODO
+TODO(write): Choose some task from Gaia, show generated plan, re-evaluations, etc.
 
 \chapter{Conclusion}
 
-TODO
+TODO(write)
+
+\section{Possible Continuation}
+
+TODO(maybe): IDK if this is necessary
 
 % ------------------------------- BIBLIOGRAPHY ---------------------------
 % LEXICOGRAPHICAL ORDER BY AUTHORS' LAST NAMES
@@ -1509,24 +1539,11 @@ TODO
 \bibitem[21]{schroff2015facenet} F.~Schroff, D.~Kalenichenko, J.~Philbin, \emph{FaceNet: A Unified Embedding for Face Recognition and Clustering}, Conference on Computer Vision and Pattern Recognition, 2015.
 \bibitem[22]{hu2022lora} E.~J.~Hu, Y.~Shen, P.~Wallis, Z.~Allen-Zhu, Y.~Li, S.~Wang, L.~Wang, W.~Chen, \emph{LoRA: Low-Rank Adaptation of Large Language Models}, International Conference on Learning Representations, 2022.
 \bibitem[23]{dettmers2023qlora} T.~Dettmers, A.~Pagnoni, A.~Holtzman, L.~Zettlemoyer, \emph{QLoRA: Efficient Finetuning of Quantized LLMs}, Advances in Neural Information Processing Systems, 2023.
+\bibitem[24]{cursor2024} Anysphere~Inc., \emph{Cursor --- The AI Code Editor}, 2024. Available: \url{https://www.cursor.com}
 
 \end{thebibliography}
 \pagenumbering{gobble}
 \thispagestyle{empty}
-
-% ----------------------- LIST OF SYMBOLS AND ABBREVIATIONS ------------------
-\chapter*{List of symbols and abbreviations}
-
-% TODO
-\begin{tabular}{cl}
-nzw. & nadzwyczajny \\
-* & star operator \\
-$\widetilde{}$ & tilde 
-\end{tabular}
-\\
-If you don't need it, delete it.
-\thispagestyle{empty}
-
 
 % ----------------------------  LIST OF FIGURES --------------------------------
 \listoffigures
@@ -1536,11 +1553,11 @@ If you don't need it, delete it.
 \renewcommand{\listtablename}{Spis tabel}
 \listoftables
 \thispagestyle{empty}
-% TODO: If you don't need it, delete it.
+% TODO(review): If you don't need it, delete it.
 
 % -----------------------------  LIST OF APPENDICES ---------------------------
 \chapter*{List of appendices}
-% TODO
+% TODO(review)
 \begin{enumerate}
 \item Appendix 1
 \item Appendix 2
