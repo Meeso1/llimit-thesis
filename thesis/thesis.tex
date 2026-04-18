@@ -339,7 +339,7 @@ Paper proposes four distinct probability-predicting methods:
     \label{equation:routellm-swr}
         \omega'(q, q') = \gamma^{1 + S(q, q')}, \quad S(q, q') = \frac{v_q \cdot v_{q'}}{\|v_q\|\|v_{q'}\|} \cdot \max_{1 \le s \le |D|} \frac{v_{q'} \cdot v_q}{\|v_{q'}\|\|v_q\|}
     \end{equation}
-    Subsequently, a Bradley-Terry model is fit, minimizing binary cross-entropy, with sample weights given by the formula \ref{equation:routellm-swr}. It's output is then returned as predicted probability. [TODO(review): Does this make sense?]
+    Subsequently, a Bradley-Terry model is fit, minimizing binary cross-entropy, with sample weights given by the formula \ref{equation:routellm-swr}. It's output is then returned as predicted probability.
     \item \textbf{Matrix Factorization} \\
     The model learns a bilinear scoring function, given by equation \ref{equation:routellm-matrix-factorization-score}. Then, predicted probability is given by formula \ref{equation:routellm-matrix-factorization-probability}. \\
     $v_q$, like in previous method, represents a text embedding of query $q$. $v_m$ is a learnable model tier embedding - a separate embedding is learned for each model tier identified in dataset preprocessing in section \ref{section:routellm-datasets}, not only for two model groups that routing is decided between. The model is fit through gradient descent, using \textit{Adam} optimizer and binary cross-entropy objective function.
@@ -441,7 +441,7 @@ The implementation of the system was preceded by defining a set of requirements 
 
 \begin{enumerate}
     \item \textbf{The system will use a single configured LLM model for task planning.} \\
-    Different tasks may require different level of "intelligence" for generating a list of steps. Similarly, plan reevaluation during error recovery may also vary in complexity. While estimating that complexity and choosing an LLM based on this estimation would be an interesting extension of the project, it was rejected due to excessive complexity and lack of fitting datasets. Instead, LLM model used for initial planning and reevaluation is configurable, and set to \textit{Google's} \textit{Gemini 3.1 Pro} [TODO(cite)]. 
+    Different tasks may require different level of "intelligence" for generating a list of steps. Similarly, plan reevaluation during error recovery may also vary in complexity. While estimating that complexity and choosing an LLM based on this estimation would be an interesting extension of the project, it was rejected due to excessive complexity and lack of fitting datasets. Instead, LLM model used for initial planning and reevaluation is configurable, and set to \textit{Google's} \textit{Gemini 3.1 Pro} \cite{google2026gemini31pro}.
     \item \textbf{The system will only complete tasks by generating a text result.} \\
     LLMs (and adjacent models offered by the same providers) can handle a variety of tasks aside from text generation. They can generate images, execute code, perform actions on the web or in the operating system, etc. Supporting these abilities would definitely be a welcome addition to the system. However, this would considerably increase implementation complexity, and as such was rejected. 
     \item \textbf{When selecting an LLM to complete a step, the system will only consider estimated completion cost and predicted response quality.} \\
@@ -456,7 +456,7 @@ The system was implemented as a REST API application, which allows users to crea
 
 \section{Technology selection}
 
-The system was implemented in \textit{Python} 3.13, using \textit{FastAPI} [TODO(cite): cite or something] framework. Scoring models were implemented using \textit{Pytorch} and \textit{XGBoost} packages, with \textit{scikit-learn} utilities being used for preprocessing.
+The system was implemented in \textit{Python} 3.13, using \textit{FastAPI} \cite{fastapi2018} framework. Scoring models were implemented using \textit{Pytorch} and \textit{XGBoost} packages, with \textit{scikit-learn} utilities being used for preprocessing.
 
 \section{API Interface}
 
@@ -479,7 +479,7 @@ The system uses API key authentication. Every request requires the key to be pre
 
 \section{LLM integration}
 
-[TODO(cite): add references to stuff described in this section, where it makes sense] Integration with LLM providers is a central part of the project. Contemporary commercial LLM landscape features a high number of providers, each offering a selection of models. While certain conventions exist (for example, \texttt{openai} integration packages for various programming languages are widely adopted by different providers, offering compatible API interface), they cover only a part of functionality required by the system. While chat and one-shot completion APIs are standardized, aspects like per-request configuration or pricing information are not.
+[TODO(maybe): add references to stuff described in this section, where it makes sense] Integration with LLM providers is a central part of the project. Contemporary commercial LLM landscape features a high number of providers, each offering a selection of models. While certain conventions exist (for example, \texttt{openai} integration packages for various programming languages are widely adopted by different providers, offering compatible API interface), they cover only a part of functionality required by the system. While chat and one-shot completion APIs are standardized, aspects like per-request configuration or pricing information are not.
 
 This problem is solved by \textit{OpenRouter}. \textit{OpenRouter} is an LLM gateway, offering unified API access (compatible with \texttt{openai} interface), request configuration, LLM description listing, and pricing information. This effectively means that instead of requiring a separate integration for each supported LLM provider, only a single implementation is required, drastically reducing complexity.
 
@@ -498,8 +498,6 @@ Diagram \ref{fig:task-execution-flow} provides a high-level overview. Task compl
 
 \subsection{Planning and Reevaluation}
 \label{section:planning-and-reevaluation}
-
-TODO(cite): some references etc.
 
 Producing a set of steps required for completion of a given task can be very easily framed as a text processing task requiring a certain level of intelligence and reasoning. Therefore, the simplest solution to that problem is just using a sufficiently good, commercial LLM. While using a high-end LLM model may seem contradictory to the objective of reducing task completion cost, the decision is justified by the fact that step planning prompt is relatively short (compared to step prompts, which may contain much more information), and that the request doesn't contain any input images or files, which cause a dominant contribution to request cost. Planning shouldn't require too extensive reasoning, either, as the actual complex task completion work should be performed when steps are executed.
 
@@ -558,7 +556,7 @@ Step completion is implemented using a work item queue, with state saved in the 
 
 \subsubsection{SSE}
 
-HTTP communication is asymmetric by design - it always starts with a request from the client, which the server handles, returning a response. This property makes dealing with long-running asynchronous processes inconvenient - the only way for the client to wait for an operation to complete is to use a pooling loop, checking the state every so often. This problem can be quite easily solved by implementing a non-HTTP notification mechanism (i.e. WebSockets [TODO(cite)]). However, a simpler solution exists: Server-Sent Events [TODO(cite)]. SSE stream utilizes HTTP for server-sent notifications, by simply keeping the HTTP connection open, writing each event data as a JSON line. While not aligning with HTTP design, this mechanism provides a simple alternative to pooling or using additional connection protocols.
+HTTP communication is asymmetric by design - it always starts with a request from the client, which the server handles, returning a response. This property makes dealing with long-running asynchronous processes inconvenient - the only way for the client to wait for an operation to complete is to use a pooling loop, checking the state every so often. This problem can be quite easily solved by implementing a non-HTTP notification mechanism (i.e. WebSockets \cite{fette2011websocket}). However, a simpler solution exists: Server-Sent Events \cite{w3c2015sse}. SSE stream utilizes HTTP for server-sent notifications, by simply keeping the HTTP connection open, writing each event data as a JSON line. While not aligning with HTTP design, this mechanism provides a simple alternative to pooling or using additional connection protocols.
 
 The system exposes an SSE endpoint at \texttt{/sse/events}. Events are produced when task state is updated in any way (step is completed, step list is generated, task finishes, etc.). Additionally, metadata filtering is implemented, making it possible to request only a certain subset of emitted events - for example, only those related to a particular task.
 
@@ -661,7 +659,7 @@ Prediction of expected quality of the response that chosen LLM would return, giv
 \section{Dataset Selection}
 \label{section:dataset-selection}
 
-The title of the most popular human-evaluated LLM preference dataset without a doubt belongs to \textit{Chatbot Arena Conversations} [TODO(cite)]. It is often used as the primary human-evaluated dataset in works researching prompt routing methods, like \textit{RouteLLM} paper \cite{ong2025routellm}, described in section \ref{section:routellm}.
+The title of the most popular human-evaluated LLM preference dataset without a doubt belongs to \textit{Chatbot Arena Conversations}, introduced by L.~Zheng et. al. in \textit{MT-Bench} paper \cite{zheng2023mtbench}. It is often used as the primary human-evaluated dataset in works researching prompt routing methods, like \textit{RouteLLM} paper \cite{ong2025routellm}, described in section \ref{section:routellm}.
 
 \textit{Chatbot Arena Conversations} data consists of a pair of responses from different LLM models to a single user prompt, along with a comparison label, determining which model's answer is considered better by the user. When comparison is unclear, the label can also indicate that both responses were sufficient for a given query, or that neither model managed to produce a good answer. Selection of LLMs is sufficiently wide for a model to learn a broad spectrum of differences between different LLM models, while prompts span a variety of topics. 
 
@@ -669,14 +667,14 @@ However, there is a crucial issue: published in 2023, \textit{Chatbot Arena Conv
 
 It's hard to evaluate how close to the truth the first assumption is. While human preferences likely did not change drastically over the last four years, expectations of what LLMs should be able to do did undergo an undeniable change, simply due to their capabilities increasing. Another significant difference may be caused by a wider adoption - people whose responses were used in \textit{Chatbot Arena Conversations} dataset belonged to a significantly narrower group of "early adopters" of LLM technology, compared to a group of LLM users today.
 
-These reasons prompted me to decide to rely on a newer alternative to \textit{Chatbot Arena Conversations} dataset. Collected and released by the same organization (\textit{LMSYS} [TODO(cite): IDK if that should be cited]), \textit{LMArena Human Preference} [TODO(cite): dataset-specific citation] is a successor of aforementioned dataset. It's structure closely resembled \textit{Chatbot Arena Conversations}, also including human comparison results over a pair of LLM responses to the same prompt. \textit{LMArena Human Preference} is also an improvement in terms of size. It contains around 140 thousand comparison pairs (compared to \textit{Chatbot Arena Conversations}'s 33 thousand), and includes responses from 53 different models (compared to \textit{Chatbot Arena Conversations}'s 20).
+These reasons prompted me to decide to rely on a newer alternative to \textit{Chatbot Arena Conversations} dataset. Collected and released by the same organization (\textit{LMSYS}), \textit{LMArena Human Preference} \cite{lmsys2024lmarena} is a successor of aforementioned dataset. It's structure closely resembled \textit{Chatbot Arena Conversations}, also including human comparison results over a pair of LLM responses to the same prompt. \textit{LMArena Human Preference} is also an improvement in terms of size. It contains around 140 thousand comparison pairs (compared to \textit{Chatbot Arena Conversations}'s 33 thousand), and includes responses from 53 different models (compared to \textit{Chatbot Arena Conversations}'s 20).
 
 It's important to note that due to a very similar structure, these datasets can be used interchangeably. Due to previously mentioned reasons, mainly \textit{LMArena Human Preference} was used for model training and evaluation throughout this work. However, comparisons between datasets are made where relevant, highlighting important differences between their data.
 
 \section{Preprocessing \& Feature Selection}
 \label{section:preprocessing-and-features}
 
-Intuitively, when it comes to inferring the quality of LLM's response to a given input, the most important aspect of that prompt should be it's semantic meaning - ideally, prompts that are equivalent when it comes to meaning, differing only in wording, should produce the same answer. Semantic meaning of a given text can be captured via a range of specialized text embedding models, which, given an input, return a vector that should be useful for a range of classification or regression tasks. As such, prompt embedding vectors are the primary candidate for model input features. Computation of embedding vectors was implemented using \texttt{sentence-transformers} Python library [TODO(cite], which offers a wide range of embedding models through an unified interface.
+Intuitively, when it comes to inferring the quality of LLM's response to a given input, the most important aspect of that prompt should be it's semantic meaning - ideally, prompts that are equivalent when it comes to meaning, differing only in wording, should produce the same answer. Semantic meaning of a given text can be captured via a range of specialized text embedding models, which, given an input, return a vector that should be useful for a range of classification or regression tasks. As such, prompt embedding vectors are the primary candidate for model input features. Computation of embedding vectors was implemented using \texttt{sentence-transformers} Python library \cite{reimers2019sentencetransformers}, which offers a wide range of embedding models through an unified interface.
 
 In practice, assumption that prompt features which are unrelated to it's meaning shouldn't influence LLM output isn't reasonable. LLMs in they current state are far from ideal, so certain biases and simple relationships cannot be ruled out. Thus, instead of relying solely on prompt embedding vectors, input features also contain a set of supporting values that represent certain characteristics of submitted question.
 
@@ -898,7 +896,7 @@ The simplest implementation of embedding model is simply a multi-layer perceptro
 
 Model was trained using triplet margin loss \cite{schroff2015facenet}, given by formula [TODO(write): equation + reference here]. Training sample features three prompt and response pairs: anchor, positive, and negative. Positive pair is produced by the same LLM as anchor, while negative pair is produced by a different LLM. Loss criterion encourages the model to produce embeddings such that the distance between anchor and positive embeddings is smaller than between anchor and negative (plus a margin).
 
-Additionally, KL loss [TODO(cite)] was introduced to encourage a sample embeddings to follow a normal distribution.
+Additionally, KL loss \cite{kingma2014vae} was introduced to encourage a sample embeddings to follow a normal distribution.
 
 [TODO(write): results]
 
@@ -985,7 +983,7 @@ To monitor learning process of the gradient boosting model, the following metric
 
 \begin{itemize}
     \item \textbf{Standard deviation of predictions} \\
-    TODO(review): does this make sense in scoring model? As the number of decision trees in gradient boosting model increases, the model should be able to distinguish between more samples, returning more diversified outputs. Each appended regressor represents a new set of prediction rules, composed with a goal of distinguishing between a subset of samples, such that each group can be assigned a more accurate output value. This process implies that standard deviation of output values should increase during fitting, approaching a constant when training stalls.
+    As the number of decision trees in gradient boosting model increases, the model should be able to distinguish between more samples, returning more diversified outputs. Each appended regressor represents a new set of prediction rules, composed with a goal of distinguishing between a subset of samples, such that each group can be assigned a more accurate output value. This process implies that standard deviation of output values should increase during fitting, approaching a constant when training stalls.
     \item \textbf{Mean new tree contribution} \\
     New decision trees are appended to the gradient boosting ensemble with the goal of changing it's prediction in a certain way. The magnitude of this change can be tracked - it's value is given by equation \ref{equation:scoring-gb-new-tree-contribution}. Recorded values of this measure are expected to decrease to zero during training process, as the model learns details of lower and lower importance. 
     \begin{equation}
@@ -1106,7 +1104,7 @@ Sentence encoding transformers are a useful tool that transform text into a fixe
 
 The core of the transformer model is a pretrained sentence transformer model, which is being fine-tuned during the training process. The output of the transformer model is passed to a scoring head, which consists of a small (configurable) number of dense layers, using \textit{LeakyReLU} activation functions (with negative slope equal to $0.1$) and dropout layers. Scoring head module also takes LLM embeddings and scalar prompt features as inputs (since, naturally, sentence transformer module only takes text as input). These input vectors are initially passed through projection layers, similarly to what is described in \ref{section:dnn-model}.
 
-The core transformer model is loaded from \textit{HuggingFace} [TODO(cite)?] using \texttt{sentence-transformers} library [TODO(cite)]. Wide variety of available models make it possible to test different options, with varying parameter counts, output dimensionalities, and architectures.
+The core transformer model is loaded from \textit{HuggingFace} \cite{wolf2020huggingface} using \texttt{sentence-transformers} library \cite{reimers2019sentencetransformers}. Wide variety of available models make it possible to test different options, with varying parameter counts, output dimensionalities, and architectures.
 
 The same loss functions were implemented as in previously described models (in section \ref{section:dnn-model}). Furthermore, the same arguments prompted the decision to leave score values unconstrained during training, adding normalization and hyperbolic tangent transformation as a post-processing step, instead. Transformer model also uses the same state reverting mechanism, preventing loss of quality due to overfitting. Additionally, since training process of this model is significantly more time-consuming, checkpointing was implemented, saving model state every few epochs, which proved useful in case of crashes during training (mostly due to out-of-memory errors).
 
@@ -1244,7 +1242,7 @@ Second criterion encodes prediction accuracy. It encourages predictor module to 
 
 Predictor loss component is additionally weighted by function $w(n) = \max(1, \frac{n}{n_w})$, where $n$ is the current epoch number. At the beginning of training, response representations produced by predictor module are highly random. There's no point in training response encoder to produce outputs that are similar to such random noise. $w(n)$ gradually ramps up the importance of that loss criterion as training progresses and predictor starts learning. 
 
-Fourth criterion is given by equation \ref{equation:kl-anchor-loss}. It is a KL loss [TODO(cite)] term, encouraging a normalized distribution of response embeddings. In particular, this prevents initial representation collapse to a single value - it is a trivially optimal solution to the second and third loss criterion.
+Fourth criterion is given by equation \ref{equation:kl-anchor-loss}. It is a KL loss \cite{kingma2014vae} term, encouraging a normalized distribution of response embeddings. In particular, this prevents initial representation collapse to a single value - it is a trivially optimal solution to the second and third loss criterion.
 
 \begin{equation}
 \label{equation:kl-anchor-loss}
@@ -1258,7 +1256,7 @@ Fifth criterion is given by equation \ref{equation:score-consistency-loss}. It e
     \mathcal{L}_\text{consistency} = \frac{1}{n} \sum_{i=0}^{n} (Score(\hat{r}_i) - Score(r_i))^2
 \end{equation}
 
-Last criterion is given by equation \ref{equation:distribution-loss}. It is a sum of Jeffrey's divergences [TODO(cite)] between encoded and predicted values of each response representation component.
+Last criterion is given by equation \ref{equation:distribution-loss}. It is a sum of Jeffrey's divergences \cite{jeffreys1946invariant} between encoded and predicted values of each response representation component.
 
 \begin{align}
 \label{equation:distribution-loss}
@@ -1540,6 +1538,15 @@ TODO(maybe): IDK if this is necessary
 \bibitem[22]{hu2022lora} E.~J.~Hu, Y.~Shen, P.~Wallis, Z.~Allen-Zhu, Y.~Li, S.~Wang, L.~Wang, W.~Chen, \emph{LoRA: Low-Rank Adaptation of Large Language Models}, International Conference on Learning Representations, 2022.
 \bibitem[23]{dettmers2023qlora} T.~Dettmers, A.~Pagnoni, A.~Holtzman, L.~Zettlemoyer, \emph{QLoRA: Efficient Finetuning of Quantized LLMs}, Advances in Neural Information Processing Systems, 2023.
 \bibitem[24]{cursor2024} Anysphere~Inc., \emph{Cursor --- The AI Code Editor}, 2024. Available: \url{https://www.cursor.com}
+\bibitem[25]{lmsys2024lmarena} LMSYS~Org, \emph{LMArena Human Preference Dataset}, Hugging Face Datasets, 2024. Available: \url{https://huggingface.co/datasets/lmsys/lmarena-ai-data}
+\bibitem[26]{reimers2019sentencetransformers} N.~Reimers, I.~Gurevych, \emph{Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks}, Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing, 2019.
+\bibitem[27]{google2026gemini31pro} Google~DeepMind, \emph{Gemini 3.1 Pro Model Card}, 2026, \url{https://deepmind.google/models/model-cards/gemini-3-1-pro/}.
+\bibitem[28]{fastapi2018} S.~Ramírez, \emph{FastAPI}, 2018. Available: \url{https://fastapi.tiangolo.com}
+\bibitem[29]{fette2011websocket} I.~Fette, A.~Melnikov, \emph{The WebSocket Protocol}, RFC 6455, Internet Engineering Task Force, 2011.
+\bibitem[30]{w3c2015sse} I.~Hickson, \emph{Server-Sent Events}, W3C Recommendation, 2015. Available: \url{https://www.w3.org/TR/eventsource/}
+\bibitem[31]{kingma2014vae} D.~P.~Kingma, M.~Welling, \emph{Auto-Encoding Variational Bayes}, International Conference on Learning Representations, 2014.
+\bibitem[32]{wolf2020huggingface} T.~Wolf, L.~Debut, V.~Sanh, J.~Chaumond, C.~Delangue, A.~Moi, P.~Cistac, T.~Rault, R.~Louf, M.~Funtowicz, J.~Davison, S.~Shleifer, P.~von~Platen, C.~Ma, Y.~Jernite, J.~Plu, C.~Xu, T.~Le~Scao, S.~Gugger, M.~Drame, Q.~Lhoest, A.~M.~Rush, \emph{Transformers: State-of-the-Art Natural Language Processing}, Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing: System Demonstrations, 2020.
+\bibitem[33]{jeffreys1946invariant} H.~Jeffreys, \emph{An Invariant Form for the Prior Probability in Estimation Problems}, Proceedings of the Royal Society of London. Series A, Mathematical and Physical Sciences, 1946.
 
 \end{thebibliography}
 \pagenumbering{gobble}
