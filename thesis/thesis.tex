@@ -452,7 +452,7 @@ The implementation of the system was preceded by defining a set of requirements 
 
 \chapter{Description of the System}
 
-The system was implemented as a REST API application, which allows users to create a task, monitor it's state, and receive the result. [TODO(review): update?] For simplicity, no UI was implemented - the system can be controlled by manual HTTP requests instead. While implementing a user-friendly interface would be an improvement, it isn't too interesting in the context of the problem, while relative simplicity of implemented operations makes it not required for testing and demonstration purposes.
+The system was implemented as a REST API application, which allows users to create a task, monitor it's state, and receive the result. For simplicity, no UI was implemented - the system can be controlled by manual HTTP requests instead. While implementing a user-friendly interface would be an improvement, it isn't too interesting in the context of the problem, while relative simplicity of implemented operations makes it not required for testing and demonstration purposes.
 
 \section{Technology selection}
 
@@ -642,7 +642,7 @@ Cost of file inputs depends on their type.
 \begin{itemize}
     \item \textbf{Images:} All models specify a set price per input image, making exact cost computation trivial.
     \item \textbf{Text-based files:} Text files, and files converted to text during preprocessing (like Office XML formats), are included in input prompt, meaning that they influence the cost by incrementing the number of input tokens. Their cost can be estimated in the same way as input token cost - by tokenization.
-    \item \textbf{Audio:} Audio input is generally priced as input tokens, at the same per-token rate. [TODO(maybe): maybe just tokenize?]
+    \item \textbf{Audio:} Audio input is generally priced as input tokens, at the same per-token rate.
     \item \textbf{Video:} Video input pricing is not returned by \textit{OpenRouter}. Lack of any pricing information severely limits possible estimation methods. Due to these factors, only a rough estimation based on file size and image input price could be implemented.
     \item \textbf{PDFs:} PDF input files are priced differently, based on requested processing mode. If text processing is chosen, text content is extracted from the file and priced as input tokens. Total text token count is estimated during file preprocessing, in the same way as prompt token count. If OCR processing is requested, PDF is priced per page - page count is computed together with text token count during preprocessing. In case of native processing, files are tokenized in model-specific way, making exact computation impossible. File token count is estimated based on text content and number of images contained in the PDF. 
 \end{itemize}
@@ -961,47 +961,6 @@ TODO(write)
 
 \section{Simple Models}
 
-\subsection{Gradient Boosting Model}
-\label{section:scoring-gb}
-
-[TODO(write): What is gradient boosting?]
-
-TODO: swap with DNN model (but move i.e. checkpointing there)
-
-Gradient boosting models are a common first choice when developing a machine learning solution for regression and classification problems. They are usually quick to learn various simple and intermediate patterns from the data. Additionally, their structure makes them relatively interpretable (especially in comparison to various neural network-based models) - as gradient boosting model is simply an ensemble of decision trees, nodes of these trees can be analyzed to find certain patterns about input to output relationships.
-
-Instead of implementing a separate, prompt-aware gradient boosting model, implementation described in section \ref{section:prompt-invariant-embedding-based-models} was extended, making input data used for scoring configurable. Based on configuration, in addition to LLM embeddings model can rely on prompt embedding vectors, as well as scalar prompt features.
-
-To match the interface of other models described further in this section, whose training process is based on \textit{epochs}, the implementation of gradient boosting algorithm does not rely on a explicitly set number of boosting iterations - contrary to the interface offered by, for example, \texttt{XGBoost} package. This dynamic approach makes it possible to perform validations or checkpointing between epochs, and most importantly allows us to implement a mechanism which reverts model state to the one that achieved the best validation accuracy. This means that longer training process can never have a negative effect on model quality - if the model starts to overfit to training data, or hits a plateau, it will be reverted to best recorded state.
-
-Due to it's convenience, this state reverting mechanism was implemented in all iterative models implemented during this project.
-
-\subsubsection{Metrics}
-\label{equation:scoring-gb-metrics}
-
-To monitor learning process of the gradient boosting model, the following metrics were introduced in addition to loss and accuracy values over training and validation sets:
-
-\begin{itemize}
-    \item \textbf{Standard deviation of predictions} \\
-    As the number of decision trees in gradient boosting model increases, the model should be able to distinguish between more samples, returning more diversified outputs. Each appended regressor represents a new set of prediction rules, composed with a goal of distinguishing between a subset of samples, such that each group can be assigned a more accurate output value. This process implies that standard deviation of output values should increase during fitting, approaching a constant when training stalls.
-    \item \textbf{Mean new tree contribution} \\
-    New decision trees are appended to the gradient boosting ensemble with the goal of changing it's prediction in a certain way. The magnitude of this change can be tracked - it's value is given by equation \ref{equation:scoring-gb-new-tree-contribution}. Recorded values of this measure are expected to decrease to zero during training process, as the model learns details of lower and lower importance. 
-    \begin{equation}
-    \label{equation:scoring-gb-new-tree-contribution}
-        \operatorname{C}_t = \operatorname{mean}(\vert \hat{y}_i^{(t)} - \hat{y}_i^{(t-1)} \vert)
-    \end{equation}
-    \item \textbf{Total feature gain improvement} \\
-    Gradient boosting trees are constructed by greedily selecting the best split at each node, maximizing \textit{Gain} - a property given by equation \ref{equation:scoring-gb-gain}. $G_R$ and $G_L$ represent sums of first-order gradients of the objective function in right and left child node, $H_R$ and $H_L$ - sums of second-order gradients in child nodes, $\lambda$ - L2 penalty term, and $\gamma$ - split penalty term (minimal gain required to add a new node). As gain is closely related to loss function minimization, it can be interpreted as an importance measure of each node. From this interpretation, input component and scalar feature importance can be defined as a sum of gain values in nodes that use information from that component or feature when splitting data. Low gain sum for a given component or feature means that it is considered only in nodes that don't contribute to the output in a significant way, which effectively signals that it is ignored by the ensemble.
-    \begin{equation}
-    \label{equation:scoring-gb-gain}
-        \text{Gain}(m, j, t) = \frac{1}{2}\left( \frac{G_L^2}{H_L + \lambda} + \frac{G_R^2}{H_R + \lambda} - \frac{(G_L + G_R)^2}{H_L + H_R + \lambda} \right) - \gamma
-    \end{equation}
-\end{itemize}
-
-\subsubsection{Results}
-
-TODO(write)
-
 \subsection{DNN Model}
 \label{section:dnn-model}
 
@@ -1009,16 +968,16 @@ The first deep learning model that was implemented uses a simple multi-layer neu
 
 Three distinct input vectors don't have to share any characteristics, like dimensionality, scale, or importance. For each, a separate projection layer was introduced. These layers transform input vectors into representations of set dimensionality, which subsequently are concatenated and used as input to the following layers of the network.
 
-Model architecture is presented on diagram \ref{fig:dn-scoring-arch}. Number and sizes of hidden layers are configurable. \textit{LeakyReLU} was chosen as the activation function, with negative slope set to $0.1$. Dropout layers were introduced between each pair of hidden layers to prevent overfitting. Additionally, \textit{LayerNorm} layers were introduced for regularization, and gradient clipping was introduced to prevent gradient explosions during training.
+Model architecture is presented on diagram \ref{figure:dn-scoring-arch}. Number and sizes of hidden layers are configurable. \textit{LeakyReLU} was chosen as the activation function, with negative slope set to $0.1$. Dropout layers were introduced between each pair of hidden layers to prevent overfitting. Additionally, \textit{LayerNorm} layers were introduced for regularization, and gradient clipping was implemented to prevent gradient explosions during training.
 
 \begin{figure}[h]
     \centering
     \includegraphics[width=0.8\textwidth]{thesis/diagrams/dn-scoring.drawio.png}
     \caption{DNN model architecture}
-    \label{fig:dn-scoring-arch}
+    \label{figure:dn-scoring-arch}
 \end{figure}
 
-The score assignment goal that the network tries to achieve does not inherently require any specific scale of outputs. As scores are only ever used for comparison, transforming them through any strictly increasing function does not change the quality of the result - for each compared pair of models, bigger score will still be bigger after the transformation. This ambiguity is undesired and impractical from human perspective. Introducing a secondary training objective could be a solution to this problem, however it is unnecessary in this case. Instead of introducing an additional loss term, whose influence may negatively impact the primary objective, score post-processing was introduced. After training, mean and standard deviation of scores assigned to training data is computed, such that subsequent inference results can be normalized to mean 0 and standard deviation equal to 1. Additionally, scaled scores are transformed using a scaled hyperbolic tangent function onto a $(-1, 1)$ range.
+The score assignment goal that the network tries to achieve does not inherently require any specific scale of outputs. As scores are only ever used for comparison, transforming them through any strictly increasing function does not change the quality of the result - for each compared pair of models, bigger score will still be bigger after the transformation. This ambiguity is undesired and impractical from human perspective. Introducing a secondary training objective could be a solution to this problem, however it is unnecessary in this case. Instead of introducing an additional loss term, whose influence may negatively impact the primary objective, score post-processing was introduced. After training, mean and standard deviation of scores assigned to training data is computed, such that subsequent inference results can be normalized to mean 0 and standard deviation equal to 1. Additionally, scaled scores are transformed using a hyperbolic tangent function onto a $(-1, 1)$ range.
 
 \subsubsection{\textit{AdamW}}
 
@@ -1048,6 +1007,14 @@ Two interchangeable loss functions were implemented: margin ranking loss (define
 \end{equation}
 
 Initially, margin ranking loss seemed more favorable - once scores assigned to a given training pair satisfy the comparison with a margin, the pair has no contribution to loss gradients, and therefore model is not encouraged to widen the score gap. Intuitively, this is a desired behavior. Assigning a widely different scores to compared samples is by no means better than keeping their difference small. However, margin ranking loss turned out to under-perform significantly in practice. This observation motivated the implementation of an alternative.
+
+\subsubsection{Checkpointing}
+
+Iterative machine learning models, given sufficiently long training time (or sufficiently high epoch count), often overfit to training data. As the objective which the model minimizes is computed over a set list of training samples, models with sufficiently high parameter counts eventually start learning patterns that randomly occur in data, and don't generalize to validation sample set. This is observed as model performance improvement over training data, while it's validation performance begins to decrease.
+
+To address this problem, a simple checkpointing mechanism was introduced. Every epoch, validation accuracy is computed, and if it's value is bigger than previously recorded, current model state is saved. When training completes, model is reverted to it's best recorded state. This means that longer training process can never have a negative effect on model quality - if the model starts to overfit to training data, or hits a plateau, it will be reverted to previous, better state.
+
+Due to it's usefulness, this system was implemented in all iterative models.
 
 \subsubsection{Metrics}
 \label{section:dnn-model-metrics}
@@ -1091,6 +1058,41 @@ The following sensitivity metrics were implemented:
 \end{itemize}
 
 Each metric is computed separately on training and validation sets.
+
+\subsubsection{Results}
+
+TODO(write)
+
+\subsection{Gradient Boosting Model}
+\label{section:scoring-gb}
+
+Gradient boosting models are a common first choice when developing a machine learning solution for regression and classification problems. They are usually quick to learn various simple and intermediate patterns from the data. Additionally, their structure makes them relatively interpretable (especially in comparison to various neural network-based models) - as gradient boosting model is simply an ensemble of decision trees, nodes of these trees can be analyzed to find certain patterns about input to output relationships.
+
+Instead of implementing a separate, prompt-aware gradient boosting model, implementation described in section \ref{section:prompt-invariant-embedding-based-models} was extended, making input data used for scoring configurable. Based on configuration, in addition to LLM embeddings model can rely on prompt embedding vectors, as well as scalar prompt features.
+
+To match the interface of other models described in this section, whose training process is based on epochs, the implementation of gradient boosting algorithm does not rely on a explicitly set number of boosting iterations - contrary to the interface offered by, for example, \texttt{XGBoost} package. This dynamic approach makes it possible to perform validations and checkpointing between epochs.
+
+\subsubsection{Metrics}
+\label{equation:scoring-gb-metrics}
+
+To monitor learning process of the gradient boosting model, the following metrics were introduced in addition to loss and accuracy values over training and validation sets:
+
+\begin{itemize}
+    \item \textbf{Standard deviation of predictions} \\
+    As the number of decision trees in gradient boosting model increases, the model should be able to distinguish between more samples, returning more diversified outputs. Each appended regressor represents a new set of prediction rules, composed with a goal of distinguishing between a subset of samples, such that each group can be assigned a more accurate output value. This process implies that standard deviation of output values should increase during fitting, approaching a constant when training stalls.
+    \item \textbf{Mean new tree contribution} \\
+    New decision trees are appended to the gradient boosting ensemble with the goal of changing it's prediction in a certain way. The magnitude of this change can be tracked - it's value is given by equation \ref{equation:scoring-gb-new-tree-contribution}. Recorded values of this measure are expected to decrease to zero during training process, as the model learns details of lower and lower importance. 
+    \begin{equation}
+    \label{equation:scoring-gb-new-tree-contribution}
+        \operatorname{C}_t = \operatorname{mean}(\vert \hat{y}_i^{(t)} - \hat{y}_i^{(t-1)} \vert)
+    \end{equation}
+    \item \textbf{Total feature gain improvement} \\
+    Gradient boosting trees are constructed by greedily selecting the best split at each node, maximizing \textit{Gain} - a property given by equation \ref{equation:scoring-gb-gain}. $G_R$ and $G_L$ represent sums of first-order gradients of the objective function in right and left child node, $H_R$ and $H_L$ - sums of second-order gradients in child nodes, $\lambda$ - L2 penalty term, and $\gamma$ - split penalty term (minimal gain required to add a new node). As gain is closely related to loss function minimization, it can be interpreted as an importance measure of each node. From this interpretation, input component and scalar feature importance can be defined as a sum of gain values in nodes that use information from that component or feature when splitting data. Low gain sum for a given component or feature means that it is considered only in nodes that don't contribute to the output in a significant way, which effectively signals that it is ignored by the ensemble.
+    \begin{equation}
+    \label{equation:scoring-gb-gain}
+        \text{Gain}(m, j, t) = \frac{1}{2}\left( \frac{G_L^2}{H_L + \lambda} + \frac{G_R^2}{H_R + \lambda} - \frac{(G_L + G_R)^2}{H_L + H_R + \lambda} \right) - \gamma
+    \end{equation}
+\end{itemize}
 
 \subsubsection{Results}
 
@@ -1487,7 +1489,7 @@ During every task step execution, three values are recorded:
 
 \begin{itemize}
     \item Estimated request cost based on predicted response token count, computed before request is made, and used during model selection;
-    \item Estimated request cost based on real response token count, computed in the same way as previous quantity, but using response token count reported by the LLM provider; % TODO(review): Estimated cost might be actually different in the system - I think we also use input token count from provider or sth like that. This should be fixed.
+    \item Estimated request cost based on real response token count, computed in the same way as previous quantity, but using response token count reported by the LLM provider;
     \item Real request cost, reported by \textit{OpenRouter}.
 \end{itemize}
 
