@@ -158,6 +158,10 @@
 \usepackage{url}
 \usepackage[justification=centering]{caption}
 \usepackage{framed}
+\usepackage{subcaption}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tablefootnote}
 
 % -------------------------- USER SETTINGS ---------------------------
 
@@ -273,7 +277,8 @@ The goal of this work is the implementation of an agentic system which addresses
 
 Partial problems that the system solves are addressed in a number of works and solutions, both open and commercial. Task execution planning that relies on a dynamic list of steps is used by numerous, if not most, agentic systems. Agentic code editors, like \textit{Cursor} \cite{cursor2024}, either implicitly rely on this approach to complete complex user requests, or are able to use it conditionally. Computer use agents, like \textit{Simular's} \textit{Agent S2} \cite{agashe2025agents2}, often use step-based planning as a foundation of their operations. 
 
-Dynamic selection of LLM models is researched by a range of works, albeit this problem is usually less critical than dynamic planning for most systems, since often usage of a single LLM model is sufficient for a specific kind of operation that a given solution needs to perform. I.~Ong et. al. in \textit{RouteLLM: Learning to Route LLMs with Preference Data} \cite{ong2025routellm} paper focus on routing prompts between two groups of LLMs - weaker but cheaper, and more expensive but stronger models - with the purpose of reducing average response cost while minimizing quality reduction. \textit{RoRF: Routing on Random Forests} blog post by \textit{Not Diamond} \cite{notdiamond2024rorf} describes a simpler variant of the same problem, using random forests to route prompts between pairs of LLMs. [TODO(maybe): 1 more example?].
+Dynamic selection of LLM models is researched by a range of works, albeit this problem is usually less critical than dynamic planning for most systems, since often usage of a single LLM model is sufficient for a specific kind of operation that a given solution needs to perform. I.~Ong et. al. in \textit{RouteLLM: Learning to Route LLMs with Preference Data} \cite{ong2025routellm} paper focus on routing prompts between two groups of LLMs - weaker but cheaper, and more expensive but stronger models - with the purpose of reducing average response cost while minimizing quality reduction. \textit{RoRF: Routing on Random Forests} blog post by \textit{Not Diamond} \cite{notdiamond2024rorf} describes a simpler variant of the same problem, using random forests to route prompts between pairs of LLMs. 
+% TODO(maybe): 1 more example?.
 
 \section{Cursor}
 
@@ -479,7 +484,8 @@ The system uses API key authentication. Every request requires the key to be pre
 
 \section{LLM integration}
 
-[TODO(maybe): add references to stuff described in this section, where it makes sense] Integration with LLM providers is a central part of the project. Contemporary commercial LLM landscape features a high number of providers, each offering a selection of models. While certain conventions exist (for example, \texttt{openai} integration packages for various programming languages are widely adopted by different providers, offering compatible API interface), they cover only a part of functionality required by the system. While chat and one-shot completion APIs are standardized, aspects like per-request configuration or pricing information are not.
+% TODO(maybe): add references to stuff described in this section, where it makes sense
+Integration with LLM providers is a central part of the project. Contemporary commercial LLM landscape features a high number of providers, each offering a selection of models. While certain conventions exist (for example, \texttt{openai} integration packages for various programming languages are widely adopted by different providers, offering compatible API interface), they cover only a part of functionality required by the system. While chat and one-shot completion APIs are standardized, aspects like per-request configuration or pricing information are not.
 
 This problem is solved by \textit{OpenRouter}. \textit{OpenRouter} is an LLM gateway, offering unified API access (compatible with \texttt{openai} interface), request configuration, LLM description listing, and pricing information. This effectively means that instead of requiring a separate integration for each supported LLM provider, only a single implementation is required, drastically reducing complexity.
 
@@ -831,17 +837,58 @@ This criterion can be equivalently formulated via a min-cost-max-flow problem.
 
 Then, node potentials can be interpreted entry scores.
 
-[TODO(write): results]
-
 The solution to min-cost-max-flow problem also gives us an additional useful metric: percentage of "meaningful" comparisons in the comparison set. Any cycle in the network has positive cost (since all edges that don't include source and sink have positive cost), so optimal flow won't use them. Using that information, we can compute the ratio of used comparison edges (equal to total cost) to all comparisons. This quantity can be interpreted as decisiveness of comparison set - since comparison cycles can't be scored correctly, the more common they are, the less correct is it to represent LLM quality via a single, prompt-independent score.
+
+\begin{table}[h]
+    \centering
+    \caption{Min-cost-max-flow model results}
+    \begin{tabular}{
+    >{\raggedright\arraybackslash}p{0.3\linewidth}
+    >{\centering\arraybackslash}p{0.2\linewidth}
+    >{\centering\arraybackslash}p{0.2\linewidth}
+    }
+        \toprule
+        & \textit{LMArena} & \textit{Chatbot Arena} \\
+        \midrule
+        Accuracy [\%]          & $42.79$ & $60.50$ \\
+        Comparisons used [\%]  & $19.11$ & $41.76$ \\
+        Distinct scores        & $3$     & $4$     \\
+        \bottomrule
+    \end{tabular}
+    \label{table:l1-model-results}
+\end{table}
+
+Results of min-cost-max-flow model on both datasets are presented in table \ref{table:l1-model-results}. In both cases, this approach turns out to perform badly - in case of \textit{LMArena}, accuracy is worse than random. Bad performance of this approach is caused by the fact that both datasets feature comparisons between almost every pair of included models. This means that each path from source to sink that exists in the optimal flow is short, in turn causing node potentials to take a very small number of distinct values.
+
+While this approach is not useful for scoring, even as baseline, it does provide an interesting insight into the structure of training datasets. Number of useful comparisons (used by optimal flow) is low in both cases - for \textit{LMArena}, this value barely exceeds $19 \%$. This observation reinforces the idea that LLM response quality varies significantly between requests, with the effect being significantly stronger in the newer dataset.   
 
 \subsection{L2 Criterion}
 
-Minimizing squares of upset magnitudes turns out to be even simpler - it is a variation of "least squares" problem. As such, this approach was chosen.
+Minimizing squares of upset magnitudes turns out to be even simpler than minimizing their number - it is a variation of "least squares" problem. Results of this approach are presented in table \ref{table:l2-model-results}.
 
-[TODO(write): results]
+\begin{table}[h]
+    \centering
+    \caption{Least squares model results}
+    \begin{tabular}{
+    >{\raggedright\arraybackslash}p{0.25\linewidth}
+    >{\centering\arraybackslash}p{0.22\linewidth}
+    >{\centering\arraybackslash}p{0.22\linewidth}
+    }
+        \toprule
+        & \textit{LMArena} & \textit{Chatbot Arena} \\
+        \midrule
+        Train accuracy [\%]   & $63.29$ & $74.73$ \\
+        Val accuracy [\%]     & $62.13$ & $74.23$ \\
+        Train RMSE            & $1.1257$ & $0.9508$ \\
+        Val RMSE              & $1.1782$ & $0.9785$ \\
+        Best model            & \texttt{gemini-2.5-pro} & \texttt{gpt-4} \\
+        Worst model           & \texttt{magistral-medium-2506} & \texttt{dolly-v2-12b} \\
+        \bottomrule
+    \end{tabular}
+    \label{table:l2-model-results}
+\end{table}
 
-Turns out that this criterion results in a significantly better accuracy than linear one. As such, it's accuracy will be used as baseline for other models. 
+The model achieves significantly better results than min-cost-max-flow approach. As such, it's accuracy will be used as baseline for other models. A $12 \%$ gap in validation accuracy between datasets is noteworthy, confirming the distinction highlighted by L1 criterion results - \textit{LMArena} dataset is less "decisive", with a significantly bigger fraction of comparisons not explainable just by model identity.
 
 \section{LLM Embedding}
 \label{section:llm-embedding}
@@ -886,15 +933,66 @@ In addition to distinguishability accuracy, two other, simpler metrics were intr
 \subsection{Features}
 \label{section:llm-embedding-features}
 
-As described in section \ref{section:preprocessing-and-features}, text embedding vectors are used as input features. As LLM embeddings are computed from both prompts and responses, text embedding vectors of both are included in input data. Additionally, certain handcrafted response features are also included. As prompts are of secondary importance scalar prompt features described in section \ref{section:preprocessing-and-features} were not used.
+As described in section \ref{section:preprocessing-and-features}, text embedding vectors are used as input features. As LLM embeddings are computed from both prompts and responses, text embedding vectors of both are included in input data. Additionally, certain handcrafted response features are also included. As prompts are of secondary importance, scalar prompt features described in section \ref{section:preprocessing-and-features} were not used.
 
-[TODO(write): list features]
+\subsubsection{Interaction Features}
+
+4 features capturing the relationship between the prompt and the response were defined:
+
+\begin{itemize}
+    \item \textbf{Cosine similarity} - Cosine similarity between prompt and response embeddings;
+    \item \textbf{Euclidean distance} - Euclidean distance between prompt and response embeddings;
+    \item \textbf{Dot product} - Dot product of prompt and response embeddings;
+    \item \textbf{Character length ratio} - Number of characters in the response, divided by number of characters in the prompt.
+\end{itemize}
+
+\subsubsection{Lexical Features}
+
+10 features capturing the writing style of the response at the word level were defined:
+
+\begin{itemize}
+    \item \textbf{Average word length};
+    \item \textbf{Standard deviation of word length};
+    \item \textbf{Inverse Type-token ratio} - Number of unique words, divided by total word count;
+    \item \textbf{Word length ratios} - Fraction of words with 1–3, 4-6, 7-9 and 10+ characters (four separate features);
+    \item \textbf{Uppercase character ratio} - Number of uppercase characters, divided by total character count;
+    \item \textbf{Digit character ratio} - Number of digit characters, divided by total character count;
+    \item \textbf{Whitespace character ratio} - Number of whitespace characters, divided by total character count.
+\end{itemize}
+
+\subsubsection{Structural Features}
+
+15 features capturing the structural organization of the response were defined:
+
+\begin{itemize}
+    \item \textbf{Sentence count};
+    \item \textbf{Average sentence length} - Mean number of words per sentence;
+    \item \textbf{Standard deviation of sentence length};
+    \item \textbf{Maximum sentence length} - Length in words of the longest sentence;
+    \item \textbf{Paragraph count};
+    \item \textbf{Average paragraph length} - Mean number of words per paragraph;
+    \item \textbf{Period density} - Number of periods, divided by total character count;
+    \item \textbf{Comma density} - Number of commas, divided by total character count;
+    \item \textbf{Question mark density} - Number of question marks, divided by total character count;
+    \item \textbf{Exclamation mark density} - Number of exclamation marks, divided by total character count;
+    \item \textbf{Colon density} - Number of colons, divided by total character count;
+    \item \textbf{Semicolon density} - Number of semicolons, divided by total character count;
+    \item \textbf{Code block count} - Number of triple-backtick code blocks in the response;
+    \item \textbf{Bullet point count} - Number of lines beginning with a bullet point marker (\texttt{-}, \texttt{*}, or \texttt{•});
+    \item \textbf{Numbered list item count} - Number of lines beginning with a digit followed by a period.
+\end{itemize}
 
 \subsection{DNN-based Embedding}
 
 The simplest implementation of embedding model is simply a multi-layer perceptron. \textit{LeakyReLU} activation function was used, and dropout layers were introduced to prevent overfitting. Hidden layer sizes (and their number) are configurable.
 
-Model was trained using triplet margin loss \cite{schroff2015facenet}, given by formula [TODO(write): equation + reference here]. Training sample features three prompt and response pairs: anchor, positive, and negative. Positive pair is produced by the same LLM as anchor, while negative pair is produced by a different LLM. Loss criterion encourages the model to produce embeddings such that the distance between anchor and positive embeddings is smaller than between anchor and negative (plus a margin).
+Model was trained using triplet margin loss \cite{schroff2015facenet}, given by formula \ref{equation:llm-embedding-triplet-margin-loss}. Training sample features three prompt and response pairs: anchor ($a$), positive ($p$), and negative ($n$). Positive pair is produced by the same LLM as anchor, while negative pair is produced by a different LLM. Loss criterion encourages the model to produce embeddings such that the distance between anchor and positive embeddings is smaller than between anchor and negative (plus a margin).
+
+\begin{align}
+\label{equation:llm-embedding-triplet-margin-loss}
+    \mathcal{L}_{\mathrm{triplet}} &= \frac{1}{|\Omega|} \sum_{(a,p,n) \in \Omega} \max\!\left(0,\; \vert f(a) - f(p) \vert - \vert f(a) - f(n) \vert + \delta\right) \\
+    \Omega &= \{(a, p, n) : m_a = m_p,\; m_a \neq m_n\}
+\end{align}
 
 Additionally, KL loss \cite{kingma2014vae} was introduced to encourage a sample embeddings to follow a normal distribution.
 
@@ -906,7 +1004,7 @@ Text embedding vectors used by DNN embedding model are generated using a pre-tra
 
 Tuning-based embedding model does just that. For efficiency, only last two layers of the model were unfrozen. To ensure that embedding dimension is configurable and does not depend on the choice of transformer model, projection layer was added. The same loss criterion was used as in previous approach - triplet margin and KL loss.
 
-[TODO(maybe): It might be a good idea to improve impl there - scoring transformer does things better]
+% TODO(maybe): It might be a good idea to improve impl there - scoring transformer does things better
 
 [TODO(write): results]
 
@@ -940,9 +1038,20 @@ Set aggregator module uses sample embeddings produced by pair encoder, outputtin
     \label{fig:attention-embedding-set-embedding}
 \end{figure}
 
-The model is trained using a supervised contrastive loss. In each batch, multiple embeddings are computed for each model, using different subsets of samples. Loss criterion encourages representations of the same model to be closer to each other than to all other representations. This directly represents the distinguishability requirement - embeddings produced by different subsets of samples from the same LLM should be different than embeddings of other LLMs.
+The model is trained using a supervised contrastive loss, given by equation \ref{equation:attention-embedding-scl-loss}. In each batch, multiple embeddings are computed for each model, using different subsets of samples ($T_i$). Loss criterion encourages representations of the same model to be closer to each other than to all other representations. This directly represents the distinguishability requirement - embeddings produced by different subsets of samples from the same LLM should be different than embeddings of other LLMs.
 
-[TODO(write): loss formulas]
+\begin{align}
+\label{equation:attention-embedding-scl-loss}
+    \mathcal{L}_{\mathrm{SCL}} = - \frac{1}{N} \sum_{i=1}^{N} \frac{1}{|P(i)|} \sum_{\substack{p \neq i \\ m_p = m_i}} & \log \left(
+    \frac{
+        \exp\!\left(\tilde{f}(T_i) \cdot \tilde{f}(T_p) \,/\, \tau\right)
+    }{
+        \displaystyle\sum_{k \neq i} \exp\!\left(\tilde{f}(T_i) \cdot \tilde{f}(T_k) \,/\, \tau\right)
+    } \right) \\
+    \tilde{f}(x) &= \frac{f(x)}{\vert f(x) \vert}
+\end{align}
+
+$P(i)$ represents all embeddings in a batch computed from samples from the same model. $f$ represents embedding computation. $\tau$ is a configurable temperature parameter.
 
 \subsubsection{Results}
 
@@ -1112,7 +1221,8 @@ The same loss functions were implemented as in previously described models (in s
 
 \subsubsection{Fine-tuning Methods}
 
-A number of fine-tuning methods were implemented. Initially, the easiest approach involved simply unfreezing $n$ final layers of the model. This turned out to produce terrible results, while also not reducing the number of trainable parameters enough. [TODO(maybe): something more]. \textit{LoRA} and \textit{QLoRA} methods were implemented as alternatives. The main idea behind \textit{LoRA} (or \textit{Low Rank Adaptation}), described by Hu et. al. in \textit{LoRA: Low-Rank Adaptation of Large Language Models} paper \cite{hu2022lora}, is the introduction of a smaller number of new, trainable parameters, while keeping original model weights frozen. Effective, altered model weights are computed according to equation \ref{eq:lora}, where $r$ is a configurable rank of the transformation.
+% TODO(maybe): something more
+A number of fine-tuning methods were implemented. Initially, the easiest approach involved simply unfreezing $n$ final layers of the model. This turned out to produce terrible results, while also not reducing the number of trainable parameters enough. \textit{LoRA} and \textit{QLoRA} methods were implemented as alternatives. The main idea behind \textit{LoRA} (or \textit{Low Rank Adaptation}), described by Hu et. al. in \textit{LoRA: Low-Rank Adaptation of Large Language Models} paper \cite{hu2022lora}, is the introduction of a smaller number of new, trainable parameters, while keeping original model weights frozen. Effective, altered model weights are computed according to equation \ref{eq:lora}, where $r$ is a configurable rank of the transformation.
 
 \begin{align}
 \label{eq:lora}
@@ -1300,9 +1410,14 @@ The only difference is a possibility of using LLM IDs as input. In case of scori
 
 While presence of LLM IDs in input data does make LLM embeddings redundant, it was decided to include them in input data. LLM embedding vectors encode information necessary for distinguishing LLM models, derived from their responses - it is likely that this representation captures some information about response length and it's relation to the prompt, making it useful for length prediction task. Alternatively, if LLM embeddings turn out to not be helpful, models should be able to learn to ignore this part of input.
 
-Output of response prediction models is the token count of the response. To compute it, \texttt{tiktoken} tokenizer is used. Similarly to scalar prompt features, output data is transformed to make prediction easier. Logarithm of token counts is taken, and resulting values are normalized to mean 0 and standard deviation equal to 1. Models learn to predict these values, and during inference inverse transformations are used to reconstruct the token count.
+Output of response prediction models is the token count of the response. To compute it, \texttt{tiktoken} tokenizer is used. Similarly to scalar prompt features, output data is transformed to make prediction easier. Logarithm of token counts is taken, and resulting values are normalized to mean 0 and standard deviation equal to 1. Models learn to predict these values, and during inference inverse transformations are used to reconstruct the token count. Distribution of response lengths before and after the transformation are presented on figure \ref{figure:length-distribution}.
 
-[TODO(write): Plot comparing original and transformed output lenghts]
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{thesis/plots/lengths.png}
+    \caption{Response length distribution before and after transformations}
+    \label{figure:length-distribution}
+\end{figure}
 
 \section{Metrics}
 \label{section:length-prediction-metrics}
@@ -1340,9 +1455,71 @@ $x_i$ represents prompt input data, and $m_i$ - chosen LLM model. A separate pai
 
 Input feature vector $x$ consists of a configurable subset of prompt features. This allows the same implementation to represent prediction methods of varying degree of complexity. In particular, if prompt feature set is empty, the model simply predicts response length to be the average for a chosen LLM.
 
+To measure the impact of feature transformations, the model allows to skip them, instead fitting on original values.
+
 \subsubsection{Results}
 
-TODO(write)
+Results on \textit{LMArena} dataset are presented in table \ref{table:linear-regression-length-prediction-results-lmarena}. \textit{Chatbot Arena} results are shown in table \ref{table:linear-regression-length-prediction-results-chatbot-arena}.
+
+\begin{table}[h]
+    \centering
+    \caption{Linear regression model results - LMArena}
+    \begin{tabular}{
+    >{\raggedright\arraybackslash}p{0.25\linewidth}
+    >{\centering\arraybackslash}p{0.13\linewidth}
+    >{\centering\arraybackslash}p{0.13\linewidth}
+    >{\centering\arraybackslash}p{0.13\linewidth}
+    >{\centering\arraybackslash}p{0.13\linewidth}
+    }
+        \toprule
+        & \textit{No features} & \textit{Prompt length} & \textit{All features} & \textit{All features (transf.)} \\
+        \midrule
+        Train accuracy [\%]      & $11.90$ & $16.03$ & $18.37$ & $25.16$ \\
+        Val accuracy [\%]        & $11.69$ & $15.50$ & $16.06$ & $22.52$ \\
+        Train MAE                & $257.18$ & $246.23$ & $234.32$ & $220.75$ \\
+        Val MAE                  & $258.11$ & $247.40$ & $259.02$ & $226.41$ \\
+        Train RMSE               & $0.9456$ & $0.8891$ & $0.8746$ & $0.8157$ \\
+        Val RMSE                 & $0.9508$ & $0.8952$ & $1.2000$ & $0.8343$ \\
+        Train avg relative ratio & $3.5044$ & $3.1063$ & $2.9269$ & $2.5077$ \\
+        Val avg relative ratio   & $3.5277$ & $3.1558$ & $3.1126$ & $2.6614$ \\
+        Train stddev ratio       & $0.3037$ & $0.5336$ & $0.5898$ & $0.6258$ \\
+        Val stddev ratio         & $0.3048$ & $0.5413$ & $5.9506$ & $0.6759$ \\
+        \bottomrule
+    \end{tabular}
+    \label{table:linear-regression-length-prediction-results-lmarena}
+\end{table}
+
+\begin{table}[h]
+    \centering
+    \caption{Linear regression model results - Chatbot Arena}
+    \begin{tabular}{
+    >{\raggedright\arraybackslash}p{0.25\linewidth}
+    >{\centering\arraybackslash}p{0.13\linewidth}
+    >{\centering\arraybackslash}p{0.13\linewidth}
+    >{\centering\arraybackslash}p{0.13\linewidth}
+    >{\centering\arraybackslash}p{0.13\linewidth}
+    }
+        \toprule
+        & \textit{No features} & \textit{Prompt length} & \textit{All features} & \textit{All features (transf.)} \\
+        \midrule
+        Train accuracy [\%]      & $18.94$ & $19.02$ & $25.00$ & $26.88$ \\
+        Val accuracy [\%]        & $19.24$ & $19.24$ & $0.10$   & $23.62$ \\
+        Train MAE                & $92.51$ & $91.89$ & $86.22$  & $85.00$ \\
+        Val MAE                  & $93.15$ & $92.61$ & $2945.48$ & $88.00$ \\
+        Train RMSE               & $0.9553$ & $0.9503$ & $0.9027$ & $0.8902$ \\
+        Val RMSE                 & $0.9526$ & $0.9474$ & $0.9362$ & $0.9149$ \\
+        Train avg relative ratio & $2.8187$ & $2.8150$ & $2.4539$ & $2.3579$ \\
+        Val avg relative ratio   & $2.7834$ & $2.7857$ & $13.4050$ & $2.5208$ \\
+        Train stddev ratio       & $0.2420$ & $0.2600$ & $0.4409$ & $0.4720$ \\
+        Val stddev ratio         & $0.2400$ & $0.2580$ & $2271.91$ & $0.4941$ \\
+        \bottomrule
+    \end{tabular}
+    \label{table:linear-regression-length-prediction-results-chatbot-arena}
+\end{table}
+
+Prediction quality is far from ideal, which is expected from such a simple baseline approach. All variants produce predictions of significantly smaller standard deviation than real data (standard deviation ratio is smaller than 1), and consistently overestimate the length of the response (average relative ratio, computed as $\operatorname{mean}(\frac{\text{predicted}}{\text{actual}})$, is significantly bigger than 1). 
+
+Introduction of additional features has different effects in case of each dataset. For \textit{LMArena}, prompt length alone improves the accuracy by $4 \%$, while all other features provide a further improvement of $2 \%$. Finally, feature transformations boost accuracy by another $6 \%$. For \textit{Chatbot Arena}, introduction of prompt length has negligible effect. All other features improve the accuracy significantly (validation accuracy is extremely low due to a single sample with unexpectedly high formal domain score value, but training accuracy shows an improvement), with introduction of feature transformations bringing the accuracy to the same level as for \textit{LMArena}.
 
 \subsection{Gradient Boosting Model}
 
@@ -1457,7 +1634,7 @@ Performance of agentic systems on the benchmark varies, significantly improving 
 
 \subsubsection{Performance of the System}
 
-TODO(write)
+TODO(write): results
 
 \subsubsection{Performance with a Single Step Completion LLM}
 
@@ -1507,7 +1684,9 @@ TODO(write)
 
 \section{Possible Continuation}
 
-TODO(maybe): IDK if this is necessary
+% TODO(maybe): IDK if this is necessary
+
+TODO(write)
 
 % ------------------------------- BIBLIOGRAPHY ---------------------------
 % LEXICOGRAPHICAL ORDER BY AUTHORS' LAST NAMES
