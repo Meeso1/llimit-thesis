@@ -459,6 +459,8 @@ The implementation of the system was preceded by defining a set of requirements 
 
 The system was implemented as a REST API application, which allows users to create a task, monitor it's state, and receive the result. For simplicity, no UI was implemented - the system can be controlled by manual HTTP requests instead. While implementing a user-friendly interface would be an improvement, it isn't too interesting in the context of the problem, while relative simplicity of implemented operations makes it not required for testing and demonstration purposes.
 
+Implementation of the system is available in a \textit{Github} repository: \url{https://github.com/Meeso1/llimit}.
+
 \section{Technology selection}
 
 The system was implemented in \textit{Python} 3.13, using \textit{FastAPI} \cite{fastapi2018} framework. Scoring models were implemented using \textit{Pytorch} and \textit{XGBoost} packages, with \textit{scikit-learn} utilities being used for preprocessing.
@@ -661,6 +663,8 @@ Requirements described in section \ref{section:requirements} state that the syst
 \chapter{Scoring}
 
 Prediction of expected quality of the response that chosen LLM would return, given a certain prompt, is the main research aspect of this work. As described in section \ref{section:llm-selection}, predicted LLM scores, along with estimated request cost, are used to determine which LLM should be utilized while completing a step. 
+
+Implementation of all models described in this section, along with performed experiments, can be found in a \textit{Github} repository: \url{https://github.com/Meeso1/llimit-model-selection}.
 
 \section{Dataset Selection}
 \label{section:dataset-selection}
@@ -930,6 +934,8 @@ In addition to distinguishability accuracy, two other, simpler metrics were intr
     \Omega &= \{(a, p, n) : m_a = m_p,\; m_a \neq m_n\}
 \end{align}
 
+In practice, triplet and nearest neighbor accuracies turned out to not be useful due to narrow value ranges. Triplet accuracy typically reaches $100 \%$ within the first few epochs as samples start to cluster, providing no further information. On the other hand, nearest neighbor accuracy stays small due to high dimensionality of embedding space, improving marginally over the training period. 
+
 \subsection{Features}
 \label{section:llm-embedding-features}
 
@@ -1022,7 +1028,7 @@ The model can be described by equation \ref{eq:attention-embedding}. $E_s$ is th
     \operatorname{Attention}(X) &= \operatorname{softmax}(\frac{Q K^T(X)}{\sqrt{dim(Q)}}) V(X)
 \end{align}
 
-Set aggregator module uses sample embeddings produced by pair encoder, outputting a single LLM embedding vector. In previous embedding models, this step was done by a simple mean computation, instead. Set aggregator uses attention mechanism. Pair embeddings are used to produce key ($K$) and value ($V$) vectors through learnable linear projections. Then, attention masks are computed by a configurable number of attention heads. This mask is then used to produce a single LLM embedding from value vectors produced from pair embeddings.
+Set aggregator module uses sample embeddings produced by pair encoder, outputting a single LLM embedding vector. In previous embedding models, this step was done by a simple mean computation. Instead, set aggregator uses attention mechanism. Pair embeddings are used to produce key ($K$) and value ($V$) vectors through learnable linear projections. Then, attention masks are computed by a configurable number of attention heads. These masks are then used to produce a single LLM embedding from value vectors produced from pair embeddings.
 
 \begin{figure}[h]
     \centering
@@ -1055,7 +1061,27 @@ $P(i)$ represents all embeddings in a batch computed from samples from the same 
 
 \subsubsection{Results}
 
-TODO(write)
+TODO(write): compare to other embedding models
+
+Results of attention model training on each dataset are presented on figures \ref{figure:attention-embedding-results-lmarena} and \ref{figure:attention-embedding-results-chatbot-arena}. On \textit{LMArena}, the model achieves $82.86 \%$ distinguishability accuracy after 312 epochs. On \textit{Chatbot Arena}, $80.00 \%$ accuracy is achieved after 271 epochs.
+
+In both cases, learning process looks good, with loss values steadily decreasing while distinguishability accuracy rises. On \textit{LMArena}, overfitting occurs only at the very end of training (after about 300 epochs). In case of \textit{Chatbot Arena}, the model starts overfitting earlier - after around 120 epochs. Longer period of overfitting allows training accuracy to reach significantly higher values (up to $98.13 \%$). However, overfitting does not negatively affect validation accuracy. It stalls, keeping a marginal upward trend.
+
+In general, results seem satisfactory. Distinguishability accuracy values reaching $80 \%$ mean that in 4 out of 5 cases, a small number of prompt and response samples can be assigned to a correct LLM. As in practice new LLM embeddings would be computed from a significantly larger set of samples, the quality of embeddings should be higher.  
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{thesis/plots/attention-embedding-lmarena.png}
+    \caption{Attention embedding model results - \textit{LMArena}}
+    \label{figure:attention-embedding-results-lmarena}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{thesis/plots/attention-embedding-chatbot-arena.png}
+    \caption{Attention embedding model results - \textit{Chatbot Arena}}
+    \label{figure:attention-embedding-results-chatbot-arena}
+\end{figure}
 
 \subsection{Prompt-invariant Embedding-based Models}
 \label{section:prompt-invariant-embedding-based-models}
@@ -1066,7 +1092,21 @@ To validate that hypothesis, gradient boosting model was implemented. The model 
 
 \subsubsection{Results}
 
-TODO(write)
+As expected, models reach pretty much the same accuracy as L2 criterion approach. On \textit{LMArena}, gradient boosting model accuracy reaches $62.18 \%$ ($0.05 \%$ improvement over L2 criterion). On \textit{Chatbot Arena}, $74.55 \%$ is reached ($0.32 \%$ improvement). Small difference in values is caused by a different loss criterion being minimized.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{thesis/plots/gradient-boosting-scoring-llm-embeddings-lmarena.png}
+    \caption{Prompt-invariant gradient boosting model results - \textit{LMArena}}
+    \label{figure:prompt-invariant-gradient-boosting-results-lmarena}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{thesis/plots/gradient-boosting-scoring-llm-embeddings-chatbot-arena.png}
+    \caption{Prompt-invariant gradient boosting model results - \textit{Chatbot Arena}}
+    \label{figure:prompt-invariant-gradient-boosting-results-chatbot-arena}
+\end{figure}
 
 \section{Simple Models}
 
@@ -1170,7 +1210,25 @@ Each metric is computed separately on training and validation sets.
 
 \subsubsection{Results}
 
-TODO(write)
+DNN model results are presented on figures \ref{figure:dnn-scoring-results-lmarena} and \ref{figure:dnn-scoring-results-chatbot-arena}. On \textit{LMArena}, model reaches $62.61 \%$ accuracy after 80 training epochs. On \textit{Chatbot Arena}, $75.64 \%$ is reached after 33 epochs.
+
+In both cases, improvement is marginal. Over the first 30 training epochs, training accuracy improves rapidly, with validation accuracy exhibiting a much slower growth. Afterwards, training accuracy continues improving at a slower pace, while validation accuracy stalls, and eventually starts to decrease slowly. Input projection variances show that while prompt embedding vectors are essentially ignored, scalar prompt feature projections have a similar norm and variance to LLM embeddings. Initially, the model seems to learn to mostly rely on LLM embeddings to learn optimal prompt-invariant scores. Then, it begins discovering certain relationships between the prompt and assigned score - this can be seen on score variance decomposition plot. However, these relationships don't seem to translate to validation set well. While a small fraction of them might be responsible for a small improvement in accuracy over prompt-invariant models, the difference between training and validation accuracy clearly state that a vast majority of patterns learned by the model in later stages are simply random artifacts of dataset split.
+
+% TODO(maybe): Ablation study - change 1 parameter in used config and check how accuracy changes
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{thesis/plots/dn-embedding-scoring-lmarena.png}
+    \caption{DNN model results - \textit{LMArena}}
+    \label{figure:dnn-scoring-results-lmarena}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{thesis/plots/dn-embedding-scoring-chatbot-arena.png}
+    \caption{DNN model results - \textit{Chatbot Arena}}
+    \label{figure:dnn-scoring-results-chatbot-arena}
+\end{figure}
 
 \subsection{Gradient Boosting Model}
 \label{section:scoring-gb}
@@ -1205,7 +1263,27 @@ To monitor learning process of the gradient boosting model, the following metric
 
 \subsubsection{Results}
 
-TODO(write)
+% TODO(write): training configurations - where to put them? In model sections? In some apprendix? Just refer to the repo?
+
+Training results on each dataset are presented on figures \ref{figure:gradient-boosting-scoring-results-lmarena} and \ref{figure:gradient-boosting-scoring-results-chatbot-arena}. 
+
+Both sets of plots look very similar. Training loss behaves similarly to validation loss initially. After a relatively small number of epochs, the rapid loss decrease slows down, with validation loss converging to a certain minimum level, and training loss maintaining a slower downward trend. Feature block importance plot shows that, in both cases, model initially relies on LLM embeddings, whose influence diminishes in favor of prompt embeddings over training duration. Scalar prompt features are ignored by the model in both cases. Standard deviation of predictions rises steadily in both cases, while tree contributions gradually get smaller.
+
+Despite these similarities, model performance over each dataset is quite different. In case of \textit{Chatbot Arena}, validation accuracy is rising over the training period, albeit significantly slower than training accuracy. Best recorded validation accuracy of $75.27 \%$ is achieved after 66 training epochs. \textit{LMArena} model does not exhibit the same behavior. While the best validation accuracy of $62.38 \%$ is recorded after a similar number of epochs, it's values don't change nearly as much, and the improvement can be attributed to chance. It seems that the relationship between prompt embedding vectors and assigned score, that the model learns over the training duration, partially generalizes to validation set in case of \textit{Chatbot Arena}. This generalization does not exist in \textit{LMArena} dataset.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{thesis/plots/gradient-boosting-lmarena.png}
+    \caption{Gradient boosting model results - \textit{LMArena}}
+    \label{figure:gradient-boosting-scoring-results-lmarena}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{thesis/plots/gradient-boosting-chatbot-arena.png}
+    \caption{Gradient boosting model results - \textit{Chatbot Arena}}
+    \label{figure:gradient-boosting-scoring-results-chatbot-arena}
+\end{figure}
 
 \section{Complex Models}
 
@@ -1294,7 +1372,27 @@ Orthogonalization is performed using Newton-Schulz iterative method. It is an ap
 
 \subsubsection{Results}
 
-TODO(write)
+Transformer model results are presented on figures \ref{figure:transformer-results-lmarena} and \ref{figure:transformer-results-chatbot-arena}. On \textit{LMArena}, model reaches $61.79 \%$ accuracy after 14 training epochs. On \textit{Chatbot Arena}, $74.64 \%$ is reached after 38 epochs.
+
+Transformer model training is the most time consuming out of all implemented models, taking multiple hours for each run. As \textit{LMArena} dataset contains about 5 times more samples than \textit{Chatbot Arena}, a difference in training time between datasets is significant. This difference motivates unequal number of training epochs - 30 training epochs were performed for \textit{LMArena} model, while 120 epochs were computed for \textit{Chatbot Arena} model.
+
+In both cases, model performance is not the best. Scoring accuracy on both datasets is right below the prompt-invariant baseline. \textit{LMArena} model training turned out to be too short - training loss values barely decrease. In case of \textit{Chatbot Arena}, 120 epochs are enough for the model to start learning, and for loss values to decrease. Validation accuracy slowly increases for the first 40 epochs, after which the model starts to overfit.
+
+Score variance decomposition and gradient attribution plots show strong reliance on model embeddings, which does not change over the training period. However, projection norms and gradient magnitudes don't collapse to 0. It seems like the model is simply not able to find any useful relationships between prompt information and assigned score, instead relying on LLM identity.
+
+\begin{figure}[h] % TODO(write): update this plot and description
+    \centering
+    \includegraphics[width=\textwidth]{thesis/plots/transformer-lmarena.png}
+    \caption{Transformer model results - \textit{LMArena}}
+    \label{figure:transformer-results-lmarena}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{thesis/plots/transformer-chatbot-arena.png}
+    \caption{Transformer model results - \textit{Chatbot Arena}}
+    \label{figure:transformer-results-chatbot-arena}
+\end{figure}
 
 \subsection{Response Predictive Model}
 
@@ -1379,6 +1477,34 @@ Last criterion is given by equation \ref{equation:distribution-loss}. It is a su
 \subsubsection{Results}
 
 TODO(write)
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{thesis/plots/response-predictive-1-lmarena.png}
+    \caption{Response predictive model results - \textit{LMArena}}
+    \label{figure:response-predictive-results-lmarena}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{thesis/plots/response-predictive-2-lmarena.png}
+    \caption{Loss values of response predictive model - \textit{LMArena}}
+    \label{figure:response-predictive-loss-lmarena}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{thesis/plots/response-predictive-1-chatbot-arena.png}
+    \caption{Response predictive model results - \textit{Chatbot Arena}}
+    \label{figure:response-predictive-results-chatbot-arena}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{thesis/plots/response-predictive-2-chatbot-arena.png}
+    \caption{Loss values of response predictive model - \textit{Chatbot Arena}}
+    \label{figure:response-predictive-loss-chatbot-arena}
+\end{figure}
 
 \subsection{Multistage Models}
 
@@ -1541,7 +1667,27 @@ In addition to metrics described in section \ref{section:length-prediction-metri
 
 \subsubsection{Results}
 
-TODO(write)
+Gradient boosting model results are presented on figures \ref{figure:gb-length-prediction-metrics-lmarena} and \ref{figure:gb-length-prediction-metrics-chatbot-arena}. On \textit{LMArena}, the model reaches $41.05 \%$ accuracy after 500 epochs (with relative mean squared error equal to $0.6856$ and mean average error of $175.13$). On \textit{Chatbot Arena}, accuracy values reach $43.79 \%$ after 499 epochs (RMSE reaches $0.7438$ and MAE equals $70.20$).
+
+Both models perform significantly better than linear regression baseline. RMSE and MAE values were improved by about $30 \%$. Monitored metrics show steady convergence, although with a certain degree of overfitting - training accuracy and loss improve quicker than validation values. On \textit{LMArena}, the model initially heavily relies on scalar prompt features, with prompt embedding having much smaller influence on the result. However, over the course of training newly added trees start relying more and more on prompt embedding vectors, which ultimately leads to reversing the relationship. At the end of training period, prompt embeddings have higher significance than scalar features. In case of \textit{Chatbot Arena}, prompt embedding have higher significance from the very beginning.
+
+LLM ID and embedding vectors are used in a small fraction of splits. This might signify that they are not important, although a more plausible explanation is that a small number of splits is sufficient - datasets contain samples from only a small number of LLM models.
+
+Interestingly, the model tends to overestimate the response length by a significant margin. It's predictions also exhibit significantly smaller variance than training data.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{thesis/plots/gb-length-prediction-lmarena.png}
+    \caption{Gradient boosting model results - \textit{LMArena}}
+    \label{figure:gb-length-prediction-metrics-lmarena}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{thesis/plots/gb-length-prediction-chatbot-arena.png}
+    \caption{Gradient boosting model results - \textit{Chatbot Arena}}
+    \label{figure:gb-length-prediction-metrics-chatbot-arena}
+\end{figure}
 
 \subsection{DNN Model}
 
@@ -1570,7 +1716,27 @@ Additional metrics were introduced as an extensions of the set described in sect
 
 \subsubsection{Results}
 
-TODO(write)
+DNN model results are presented on figures \ref{figure:dn-embedding-length-prediction-metrics-lmarena} and \ref{figure:dn-embedding-length-prediction-metrics-chatbot-arena}. On \textit{LMArena}, the model reaches $47.61 \%$ accuracy after 12 epochs (RMSE equal to $0.6854$ and MAE of $169.99$). On \textit{Chatbot Arena}, accuracy values reach $48.01 \%$ after 13 epochs (RMSE reaches $0.7409$ and MAE equals $70.02$).
+
+Both models reach accuracy maximum quite quickly, after which they overfit. Still, achieved accuracy is better than in case of gradient boosting models. Interestingly, RMSE values did not improve. As accuracy is derived from average relative error, which exhibits linear behavior, the accuracy improvement likely is caused by better predictions for samples where predictions were already good.
+
+The model tends to overestimate the length of the response, and it's predictions have lower variance than the training set. This behavior is very similar to gradient boosting models described in previous section.
+
+The model behaves quite chaotically, as seen on all plots. Metric values change rapidly between subsequent epochs. This suggests that learning rate may be too high. However, lower learning rate results in significantly smaller peak accuracy - overfitting begins earlier (after correcting for slower changes), causing validation accuracy to stop growing at earlier point. % TODO(write): Give example with some numbers
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{thesis/plots/dn-embedding-length-prediction-lmarena.png}
+    \caption{DNN model results - \textit{LMArena}}
+    \label{figure:dn-embedding-length-prediction-metrics-lmarena}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{thesis/plots/dn-embedding-length-prediction-chatbot-arena.png}
+    \caption{DNN model results - \textit{Chatbot Arena}}
+    \label{figure:dn-embedding-length-prediction-metrics-chatbot-arena}
+\end{figure}
 
 \chapter{Analysis of the Solution}
 
