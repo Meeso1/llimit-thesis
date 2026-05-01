@@ -1002,19 +1002,56 @@ Model was trained using triplet margin loss \cite{schroff2015facenet}, given by 
 
 Additionally, KL loss \cite{kingma2014vae} was introduced to encourage a sample embeddings to follow a normal distribution.
 
-[TODO(write): results]
+\subsubsection{Results}
+
+Results of model training on each dataset are presented on figures \ref{figure:frozen-embedding-results-lmarena} and \ref{figure:frozen-embedding-results-chatbot-arena}. 
+
+The model does extremely bad. On \textit{LMArena}, the model achieves $3.54 \%$ distinguishability accuracy, and on \textit{Chatbot Arena}, $7.36 \%$ accuracy is achieved. It is possible that the performance could be improved by adjusting the loss function or changing the configuration. However, these options were not explored due to attention embedding model (described in section \ref{section:attention-embedding}) achieving a satisfactory result.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{thesis/plots/frozen-embedding-lmarena.png}
+    \caption{DNN-based embedding model results - \textit{LMArena}}
+    \label{figure:frozen-embedding-results-lmarena}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{thesis/plots/frozen-embedding-chatbot-arena.png}
+    \caption{DNN-based embedding model results - \textit{Chatbot Arena}}
+    \label{figure:frozen-embedding-results-chatbot-arena}
+\end{figure}
 
 \subsection{Tuning-based Embedding}
 
 Text embedding vectors used by DNN embedding model are generated using a pre-trained, frozen transformer model. It can be improved by unfreezing model weights, and tuning them during training.
 
-Tuning-based embedding model does just that. For efficiency, only last two layers of the model were unfrozen. To ensure that embedding dimension is configurable and does not depend on the choice of transformer model, projection layer was added. The same loss criterion was used as in previous approach - triplet margin and KL loss.
+Tuning-based embedding model does just that. To ensure that embedding dimension is configurable and does not depend on the choice of transformer model, projection layer was added. The same loss criterion was used as in previous approach - triplet margin and KL loss.
 
-% TODO(maybe): It might be a good idea to improve impl there - scoring transformer does things better
+As a full fine-tuning is an expensive process, \textit{QLoRA} was implemented to shorten the process without a significant loss of quality. It is described, along with other fine-tuning methods, in section \ref{section:transformer-embedding-fine-tuning}.
 
-[TODO(write): results]
+\subsubsection{Results}
+
+Results of model training on each dataset are presented on figures \ref{figure:finetuneable-embedding-results-lmarena} and \ref{figure:finetuneable-embedding-results-chatbot-arena}. 
+
+The model's performance is similar to the previous approach. On \textit{LMArena}, the model achieves $15.09 \%$ distinguishability accuracy, and on \textit{Chatbot Arena}, $8.54 \%$ accuracy is achieved. As in previous case, it is possible that the performance could be improved. Again, these options were not explored due to attention embedding model achieving a much better result.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{thesis/plots/finetuneable-embedding-lmarena.png}
+    \caption{Tuning-based embedding model results - \textit{LMArena}}
+    \label{figure:finetuneable-embedding-results-lmarena}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{thesis/plots/finetuneable-embedding-chatbot-arena.png}
+    \caption{Tuning-based embedding model results - \textit{Chatbot Arena}}
+    \label{figure:finetuneable-embedding-results-chatbot-arena}
+\end{figure}
 
 \subsection{Attention Embedding}
+\ref{section:attention-embedding}
 
 Set embedding problem is quite common in machine learning, and as such, a number of solutions were proposed over the years. The general idea presented in the preamble of section \ref{section:llm-embedding}, defining LLM embedding as a mean of embeddings of their outputs, is loosely inspired by Zaheer et. al. \textit{DeepSets} paper \cite{zaheer2017deep}. While well received and widely cited, alternatives and extending works exist. One such work is Lee et. al. \textit{Set Transformer} paper \cite{lee2019set}. It challenges an implicit assumption that importance of all set elements is equal. The paper proposes a relatively simple alternative to taking a mean of sample representations - attention mechanism. The rationale behind that change is that certain samples provide a much clearer information about the set than others - capturing behaviors or characteristics that highlight differences between a given set and the rest.
 
@@ -1061,13 +1098,13 @@ $P(i)$ represents all embeddings in a batch computed from samples from the same 
 
 \subsubsection{Results}
 
-TODO(write): compare to other embedding models
-
 Results of attention model training on each dataset are presented on figures \ref{figure:attention-embedding-results-lmarena} and \ref{figure:attention-embedding-results-chatbot-arena}. On \textit{LMArena}, the model achieves $82.86 \%$ distinguishability accuracy after 312 epochs. On \textit{Chatbot Arena}, $80.00 \%$ accuracy is achieved after 271 epochs.
 
 In both cases, learning process looks good, with loss values steadily decreasing while distinguishability accuracy rises. On \textit{LMArena}, overfitting occurs only at the very end of training (after about 300 epochs). In case of \textit{Chatbot Arena}, the model starts overfitting earlier - after around 120 epochs. Longer period of overfitting allows training accuracy to reach significantly higher values (up to $98.13 \%$). However, overfitting does not negatively affect validation accuracy. It stalls, keeping a marginal upward trend.
 
-In general, results seem satisfactory. Distinguishability accuracy values reaching $80 \%$ mean that in 4 out of 5 cases, a small number of prompt and response samples can be assigned to a correct LLM. As in practice new LLM embeddings would be computed from a significantly larger set of samples, the quality of embeddings should be higher.  
+In general, results seem satisfactory. Distinguishability accuracy values reaching $80 \%$ mean that in 4 out of 5 cases, a small number of prompt and response samples can be assigned to a correct LLM. As in practice new LLM embeddings would be computed from a significantly larger set of samples, the quality of embeddings should be higher.
+
+Due to significantly better results than other variants, attention embedding model was used in all models that rely on LLM embeddings, described later.
 
 \begin{figure}[h]
     \centering
@@ -1298,6 +1335,7 @@ The core transformer model is loaded from \textit{HuggingFace} \cite{wolf2020hug
 The same loss functions were implemented as in previously described models (in section \ref{section:dnn-model}). Furthermore, the same arguments prompted the decision to leave score values unconstrained during training, adding normalization and hyperbolic tangent transformation as a post-processing step, instead. Transformer model also uses the same state reverting mechanism, preventing loss of quality due to overfitting. Additionally, since training process of this model is significantly more time-consuming, checkpointing was implemented, saving model state every few epochs, which proved useful in case of crashes during training (mostly due to out-of-memory errors).
 
 \subsubsection{Fine-tuning Methods}
+\label{section:transformer-embedding-fine-tuning}
 
 % TODO(maybe): something more
 A number of fine-tuning methods were implemented. Initially, the easiest approach involved simply unfreezing $n$ final layers of the model. This turned out to produce terrible results, while also not reducing the number of trainable parameters enough. \textit{LoRA} and \textit{QLoRA} methods were implemented as alternatives. The main idea behind \textit{LoRA} (or \textit{Low Rank Adaptation}), described by Hu et. al. in \textit{LoRA: Low-Rank Adaptation of Large Language Models} paper \cite{hu2022lora}, is the introduction of a smaller number of new, trainable parameters, while keeping original model weights frozen. Effective, altered model weights are computed according to equation \ref{eq:lora}, where $r$ is a configurable rank of the transformation.
@@ -1380,7 +1418,7 @@ In both cases, model performance is not the best. Scoring accuracy on both datas
 
 Score variance decomposition and gradient attribution plots show strong reliance on model embeddings, which does not change over the training period. However, projection norms and gradient magnitudes don't collapse to 0. It seems like the model is simply not able to find any useful relationships between prompt information and assigned score, instead relying on LLM identity.
 
-\begin{figure}[h] % TODO(write): update this plot and description
+\begin{figure}[h] % TODO(maybe): run again on LMArena?
     \centering
     \includegraphics[width=\textwidth]{thesis/plots/transformer-lmarena.png}
     \caption{Transformer model results - \textit{LMArena}}
@@ -1476,8 +1514,11 @@ Last criterion is given by equation \ref{equation:distribution-loss}. It is a su
 
 \subsubsection{Results}
 
-TODO(write)
+Response predictive model results are shown on figures \ref{figure:response-predictive-results-lmarena} and \ref{figure:response-predictive-results-chatbot-arena}. Additionally, figures \ref{figure:response-predictive-loss-lmarena} and \ref{figure:response-predictive-loss-chatbot-arena} present loss component changes and related metrics. On \textit{LMArena}, model reaches $62.09 \%$ accuracy after 28 training epochs. On \textit{Chatbot Arena}, $74.98 \%$ is reached after 91 epochs.
 
+Plots tell similar story to previously described approaches. The model is quick to achieve accuracy similar to the prompt-invariant baseline, after which it starts learning patterns which do not generalize to validation set. Monitored metrics don't show any clear cause of this behavior. Gradient magnitudes don't collapse to zero, projection norms decrease in a controlled fashion.
+
+% TODO(review): These plots could be improved
 \begin{figure}[h]
     \centering
     \includegraphics[width=\textwidth]{thesis/plots/response-predictive-1-lmarena.png}
@@ -1521,7 +1562,25 @@ In LLM scoring task, multi-stage models can be especially useful when a prompt-i
 
 An additional advantage of multi-stage approach is faster training. Complex models may take multiple epochs before reaching the optimal prompt-invariant accuracy. If prompt-invariant model is used as base, however, optimal prompt-invariant accuracy is the starting point.
 
-TODO(write): results
+\subsubsection{Results}
+
+Multistage approach was tested using prompt-invariant gradient boosting model as base stage, and DNN model as secondary. Results are presented on figures \ref{figure:dnn-multistage-results-lmarena} and \ref{figure:dnn-multistage-results-chatbot-arena}. On \textit{LMArena}, multistage model achieved $62.53 \%$ accuracy after 27 epochs. On \textit{Chatbot Arena}, $75.34 \%$ was achieved after 23 epochs.
+
+Plots look similar to their counterparts describing the variant without the base model. Expectedly, the main difference is a much shorter and less steep initial learning period, during which training and validation accuracy rise together to the baseline level - the baseline is the starting point in this case. 
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{thesis/plots/dn-embedding-multistage-lmarena.png}
+    \caption{Multistage model results - \textit{LMArena}}
+    \label{figure:dnn-multistage-results-lmarena}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{thesis/plots/dn-embedding-multistage-chatbot-arena.png}
+    \caption{Multistage model results - \textit{Chatbot Arena}}
+    \label{figure:dnn-multistage-results-chatbot-arena}
+\end{figure}
 
 \chapter{Response Length Prediction}
 \label{section:length-prediction}
@@ -1739,6 +1798,7 @@ The model behaves quite chaotically, as seen on all plots. Metric values change 
 \end{figure}
 
 \chapter{Analysis of the Solution}
+\label{section:solution-analysis}
 
 The problem solved by the system is inherently multifaceted. The goal of multistep task completion while minimizing cost relies on cooperation of multiple components and subsystems. As such, when evaluating performance of the system, analysis of individual parts of the application is crucial in addition to overall quality.
 
@@ -1788,6 +1848,10 @@ The choice of \textit{GAIA} benchmark for system evaluation was motivated primar
 
 Task which are impossible for the system to complete due to lack of support for required capability were excluded from the benchmark during evaluation. In total, 22 tasks (13 \%) were skipped.
 
+\subsection{Example Task Execution Process}
+
+TODO(write): Choose some task from Gaia, show generated plan, re-evaluations, etc.
+
 \subsection{Results}
 
 \subsubsection{Baseline Performance}
@@ -1800,21 +1864,57 @@ Performance of agentic systems on the benchmark varies, significantly improving 
 
 \subsubsection{Performance of the System}
 
-TODO(write): results
+The system was evaluated with restricted set of available LLMs (described in section \ref{section:model-restriction}). To ensure that quality prediction models can assign a meaningful score to every LLM, only LLMs included in \textit{LMArena} dataset could be chosen.
+
+Overall, the system achieved $41.26$ accuracy across all benchmark tasks. $54.35 \%$ accuracy was achieved on level 1 tasks, $41.03 \%$ - on level 2, and $10.53 \%$ - on level 3. Interestingly, a significant portion of failures (13 out of 84) is not caused by reasoning errors, but by inaccurate output format. Regularly, instead of responding with a single number, LLM produces a full sentence response, or given an instruction to output a comma-separated list of items returns a JSON-style list (enclosed in square brackets). This behavior persists after adjusting the evaluation prompt to highlight the importance of exact output format, and to suggest an additional format-checking step during initial planning LLM call. Treating these answers as correct, the overall accuracy of the system rises to $50.35 \%$.
 
 \subsubsection{Performance with a Single Step Completion LLM}
 
-The system relies on dynamic LLM selection for step completion. It's impact can be measured by replacing selection logic with a single pre-defined LLM model. As the system is designed to balance task completion cost with response quality, two reference experiments were performed. In the first case, step completion LLM was set to a model known for it's high cost and competitive reasoning ability - \textit{Claude 4.6 Opus} [TODO(review): maybe instead choose highest prompt-invariant score? Or highest by some leaderboard?]. In the second case, one of the cheapest LLMs was chosen - TODO(review).
+% TODO(maybe): Run evaluation with best model from LMArena?
 
-TODO(write): results
+The system relies on dynamic LLM selection for step completion. It's impact can be measured by replacing selection logic with a single pre-defined LLM model. As the system is designed to balance task completion cost with response quality, two reference experiments were performed. In the first case, step completion LLM was set to a model known for it's high cost and competitive reasoning ability - \textit{Claude 4.7 Opus}. In the second case, one of the cheapest LLMs available through \textit{OpenRouter} was chosen - \textit{Gemini 2.0 Fast}. While there are cheaper alternatives, \textit{Gemini} model was chosen due to native web search ability and multimodal input, without which a significant fraction of tasks cannot be completed.
+
+\begin{table}[h]
+    \centering
+    \caption{Accuracy and cost comparison across configurations and GAIA difficulty levels}
+    \begin{tabular}{
+    >{\raggedright\arraybackslash}p{0.30\linewidth}
+    >{\centering\arraybackslash}p{0.16\linewidth}
+    >{\centering\arraybackslash}p{0.16\linewidth}
+    >{\centering\arraybackslash}p{0.16\linewidth}
+    }
+        \toprule
+        & \textit{Gemini 2.0 Flash} & \textit{Dynamic selection} & \textit{Claude Opus} \\
+        \midrule
+        Level 1 accuracy [\%]   & $32.61$  & $54.35$  & $71.74$  \\
+        Level 1 cost [\$]       & $0.1095$ & $1.1442$ & $8.8447$ \\
+        \midrule
+        Level 2 accuracy [\%]   & $28.21$  & $41.03$  & $70.51$   \\
+        Level 2 cost [\$]       & $0.2697$ & $1.5254$ & $14.2938$ \\
+        \midrule
+        Level 3 accuracy [\%]   & $5.26$   & $10.53$  & $31.58$  \\
+        Level 3 cost [\$]       & $0.0692$ & $0.6636$ & $4.2943$ \\
+        \midrule
+        Total accuracy [\%]     & $26.57$  & $41.26$  & $65.73$   \\
+        Total cost [\$]         & $0.4484$ & $3.3332$ & $27.4328$ \\
+        \bottomrule
+    \end{tabular}
+    \label{table:gaia-accuracy-cost-comparison}
+\end{table}
+
+Results are presented in table \ref{table:gaia-accuracy-cost-comparison}, along with the results achieved by the system with dynamic model selection. As expected, the variant which uses \textit{Claude 4.7 Opus} achieved the best results, while also being the most expensive. Similarly, \textit{Gemini 2.0 Fast} did the worst, but incurred the lowest cost. In comparison, accuracy achieved by the system does not look too great - the score is closer to \textit{Gemini} result. This can be explained by the restriction of available models to the set present in \textit{LMArena} dataset - all used models were published before the dataset release date. The highest score (according to \textit{HAL} leaderboard \cite{kapoor2026hal}) among models included in the dataset was achieved by \textit{Claude 3.7 Sonnet} - $56.36 \%$. 
+
+The cost of evaluation using dynamic model selection is significantly closer to the cost of \textit{Gemini} variant than to \textit{Opus}. Again, while a portion of this difference can be attributed to dynamic model selection, it is also caused by restricting the selection to older models.
 
 \section{Quality Prediction}
 
-TODO(write): Reiterate baseline results vs model results
+The problem of predicting the quality of the LLM response was significantly more challenging than others described in this work. The baseline approach which ignores the provided prompt, reached accuracy of $62.18 \%$ on \textit{LMArena} dataset, and $74.55 \%$ on \textit{Chatbot Arena}. Subsequent models which attempted to learn the relationship between the prompt and the quality of received response did not improve these values significantly. The best results were achieved by a DNN model: $62.61 \%$ accuracy on \textit{LMArena}, and $75.64 \%$ on \textit{Chatbot Arena}.
+
+The idea of predicting human preference between 50 different LLM models is significantly more complex than problems addressed in referenced works, where routing usually occurs between a single pair of a weaker and stronger LLM models. This increase in complexity might have been too ambitious. Human preference is quite subjective, and therefore a set of rules dictating which response should be considered as better might not exist in general. Furthermore, LLM performance is not consistent, either. The same request will produce a different response each time it is asked, making quality prediction even more difficult.
 
 \subsection{LLM Embedding}
 
-TODO(write): Results of attention embedding model - should be very brief
+Implemented LLM embedding models and their results are described in detail in section \ref{section:llm-embedding}. The best results were achieved by attention embedding model, which reached distinguishability accuracy of $82.86 \%$ on \textit{LMArena} dataset, and $80.00 \%$ on \textit{Chatbot Arena} dataset. 
 
 \subsection{Extension to Unseen LLMs}
 
@@ -1822,7 +1922,7 @@ As described in section \ref{section:requirements}, response quality prediction 
 
 To evaluate effectiveness of extending existing models to new LLMs, accuracies were compared between scoring models trained on full comparison dataset, and models trained on the dataset with a single LLM comparison excluded. After fitting, embedding vector of withheld LLM was computed using embedding sub-model, and evaluation was performed, using computed vector as representation of the excluded LLM.
 
-TODO(write): Results
+The experiment was performed 10 times on each dataset, selecting a different withheld LLM model each time, and averaging the results. DNN model was chosen as the scoring model, due to it's best (albeit marginally) performance. On \textit{LMArena}, average accuracy achieved across pairs containing the unseen LLM model was equal to $58.48 \%$. On \textit{Chatbot Arena}, accuracy of $67.51 \%$ was achieved. Results are, as expected, worse than when all LLMs are included in training data - accuracy over withheld LLM pairs is lower by $4.127 \%$ and $8.131 \%$. Still, drops in accuracy are relatively small, and achieved performance is much better than random.
 
 \section{Cost Estimation}
 
@@ -1836,30 +1936,59 @@ During every task step execution, three values are recorded:
     \item Real request cost, reported by \textit{OpenRouter}.
 \end{itemize}
 
-Costs were recorded during system evaluation on \textit{GAIA} benchmark.
+Costs recorded during system evaluation on \textit{GAIA} benchmark are presented in table \ref{table:gaia-cost-breakdown}. The impact of response length prediction error, despite a significant mean relative error of length prediction model outputs (described in detail in section \ref{section:length-prediction}), is rather small - relative cost estimation error that it caused is equal to $5.668 \%$. The estimation process itself turns out to be the dominant source of the inaccuracy - on average, estimated costs differ from true costs billed by \textit{OpenRouter} by $114.15 \%$. It's not obvious what exactly causes the discrepancy. Likely, it's the combination of all inaccuracies. Estimations described in section \ref{section:cost-estimation} are consistently pessimistic - for example, as it's impossible to know exactly how many native web search requests the LLM will internally invoke, it is assumed that the upper limit specified in the request prompt will be exhausted. However, this tendency means that even though the relative estimation error is high, it's impact on LLM selection method is smaller. As the LLM selection is done using normalized costs, the consistent overestimation does not affect the final result. Mean average error between real and estimated costs after normalizing each set is equal to $0.4330$.
 
-TODO(write): results
+In addition to step completion costs, whose estimates are used during LLM selection process, planning step costs were recorded. Total planning cost is significantly smaller than step completion cost, making up $20.3 \%$ of the total evaluation cost.
 
-\section{Example Task Execution Process}
-
-TODO(write): Choose some task from Gaia, show generated plan, re-evaluations, etc.
+\begin{table}[h]
+    \centering
+    \caption{Cost breakdown by GAIA difficulty level}
+    \begin{tabular}{
+    >{\raggedright\arraybackslash}p{0.32\linewidth}
+    >{\centering\arraybackslash}p{0.12\linewidth}
+    >{\centering\arraybackslash}p{0.12\linewidth}
+    >{\centering\arraybackslash}p{0.12\linewidth}
+    >{\centering\arraybackslash}p{0.12\linewidth}
+    }
+        \toprule
+        & \textit{Level 1} & \textit{Level 2} & \textit{Level 3} & \textit{Total} \\
+        \midrule
+        Tasks                                   & $46$      & $78$      & $19$      & $143$    \\
+        Pre-request estimated cost [\$]         & $2.2186$  & $3.0286$  & $1.4864$  & $6.7336$ \\
+        Post-request estimated cost [\$]        & $2.3873$  & $3.2359$  & $1.5150$  & $7.1382$ \\
+        Real cost [\$]                          & $1.1442$  & $1.5254$  & $0.6636$  & $3.3332$ \\
+        Planning cost [\$]                      & $0.2777$  & $0.4418$  & $0.1303$  & $0.8498$ \\
+        \bottomrule
+    \end{tabular}
+    \label{table:gaia-cost-breakdown}
+\end{table}
 
 \chapter{Conclusion}
 
-TODO(write)
+An overall evaluation of the project is multidimensional, without a clear conclusion of success or failure. The system fulfills all requirements specified in section \ref{section:requirements} - task completion process works in a planned way, being able to complete multi-step queries involving multimodal inputs. As described in section \ref{section:solution-analysis}, the performance of the system on \textit{GAIA} benchmark is satisfactory, although not impressive. 
+
+Cost estimation process is far from exact, mostly because of the complexity in LLM response billing. Related machine learning models, which attempt to predict LLM response token count, show a significant improvement over baseline linear regression approach, although error magnitude of their predictions is quite significant. On the other hand, the impact of these errors turns out to be marginal in comparison to estimation errors, which makes further efforts towards improving prediction models not justified.
+
+The main research-focused component of the project, LLM response quality prediction, was mostly a failure. Despite implementing numerous machine learning models, experimenting with different approaches and configurations, and introducing a variety of monitoring and troubleshooting metrics, none of the models were able to achieve a significant improvement over the prompt-invariant baseline. The path to improvement is not clear - all tested models and configurations converged on similar (although not identical) local maximum, after which they heavily overfit, which suggests that scaling up model size might improve the result. The formulation of the LLM routing problem that scoring models were supposed to solve is significantly more complex than similar problems described in referenced papers and articles (among others, \textit{RouteLLM} \cite{ong2025routellm} and \textit{RoRF: Routing on Random Forests} \cite{notdiamond2024rorf}). It's possible that the challenge was too ambitious given the knowledge and resources. 
+
+Even though the performance of scoring component is deeply unsatisfactory, it's impact on the overall performance of the system is limited. Even if assigned scores effectively ignore provided prompt, scores assigned based only on LLM identity are still used to optimize the balance between output quality and completion cost.
+
+Despite suboptimal performance of scoring models, LLM embedding sub-models achieved a satisfactory result. Based on Lee et. al. \textit{Set Transformer} paper, attention embedding model was able to consistently fingerprint LLMs by their responses, fulfilling the requirement of independence from the set of LLMs included in the comparison dataset, and making the system extendable to new LLM models without requiring a human-annotated set of samples.
 
 \section{Possible Continuation}
 
-% TODO(maybe): IDK if this is necessary
+The project addressed and explored a variety of challenges and sub-problems. The large number of topics described in this work naturally brings about a variety of aspects that could be further addressed and improved.
 
-TODO(write)
+The system implementation could be extended in a multitude of ways. The most natural component that the system lacks is a graphical user interface. It was not implemented due to it's low importance in comparison to other problems and components, and due to lack of necessity - as operations that the system allows the user to perform are very simple from user's perspective, simply using the API directly is not problematic, both in case of manual testing and automatic evaluation. A number of other parts of the system could be improved as well. Reliance on valid output being returned by the initial planning LLM call could be avoided, even though it did not cause issues during evaluation. A wider range of supported LLM tools could be implemented: asking a question to the user, Python code execution, or downloading files from the web. A wider range of file types could be supported as well.
+
+The scoring component needs further improvements the most, however the direction of these improvements is not obvious. A further exploration of existing and new model architectures could be fruitful. As implemented models expose a large number of hyperparameters, automatic hyperparameter tuning solutions could be used to explore different configurations. However, the fact that all explored approaches converge on a very similar accuracy value is not promising. Increasing the number of parameters could also be researched, although a strong tendency to overfit that all models exhibit suggest that results will likely not be satisfactory.
 
 % ------------------------------- BIBLIOGRAPHY ---------------------------
 % LEXICOGRAPHICAL ORDER BY AUTHORS' LAST NAMES
 % FOR AMBITIOUS ONES - USE BIBTEX
 
 
-\begin{thebibliography}{30} % IF YOU HAVE MORE REFERENCES, WRITE THE BIGGER NUMBER
+\begin{thebibliography}{40} % IF YOU HAVE MORE REFERENCES, WRITE THE BIGGER NUMBER
 
 \bibitem[1]{lee2019set} J. Lee, Y. Lee, J. Kim, A. R. Kosiorek, S. Choi, Y. W. Teh, \emph{Set Transformer: A Framework for Attention-based Permutation-Invariant Neural Networks}, Proceedings of the 36th International Conference on Machine Learning (ICML), PMLR 97, 2019.
 \bibitem[2]{zaheer2017deep} M. Zaheer, S. Kottur, S. Ravanbakhsh, B. Poczos, R. R. Salakhutdinov, A. J. Smola, \emph{Deep Sets}, Advances in Neural Information Processing Systems (NeurIPS), vol. 30, 2017.
@@ -1907,7 +2036,6 @@ TODO(write)
 \renewcommand{\listtablename}{Spis tabel}
 \listoftables
 \thispagestyle{empty}
-% TODO(review): If you don't need it, delete it.
 
 % -----------------------------  LIST OF APPENDICES ---------------------------
 \chapter*{List of appendices}
