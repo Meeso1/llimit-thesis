@@ -1421,7 +1421,7 @@ In both cases, model performance is not the best. Scoring accuracy on both datas
 
 Score variance decomposition and gradient attribution plots show strong reliance on model embeddings, which does not change over the training period. However, projection norms and gradient magnitudes don't collapse to 0. It seems like the model is simply not able to find any useful relationships between prompt information and assigned score, instead relying on LLM identity.
 
-\begin{figure}[h] % TODO(maybe): run again on LMArena?
+\begin{figure}[h]
     \centering
     \includegraphics[width=\textwidth]{thesis/plots/transformer-lmarena.png}
     \caption{Transformer model results - \textit{LMArena}}
@@ -1866,16 +1866,20 @@ Task completion process that the system relies on can be illustrated by examinin
 When the task is created, the initial planning step is queued. A call to \textit{Gemini 3.1 Pro Preview} returns a structured list of steps, which, in this case, is quite short:
 
 \begin{enumerate}
-    \item \textbf{Prompt:} Search land areas of all Washington county seats. \\ % TODO(write): swap these for actual prompt from logs
+    \item \textbf{Prompt:} "Identify the largest and smallest county seats in Washington state strictly based on the land area of the county seat itself (not the county's land area). Use web search to find and compare the land areas of Washington's county seats and output the names of the largest and smallest ones." \\
     \textbf{Required Capabilities:} native web search, reasoning
-    \item \textbf{Prompt:} Reevaluate based on findings (this is a reevaluation step).
+    \item \textbf{Prompt:} "Reevaluate the plan in order to create specific steps to query the official 2020 Census population (from data.census.gov) for the exact cities identified in step 1, calculate the integer difference, and format the final answer exactly as requested." (this is a reevaluation step).
 \end{enumerate}
 
 To complete the first step, \textit{Gemini 2.5 Flash Lite} is chosen. The model completes the task, producing output presented on figure \ref{figure:gaia-question-task-execution-example-step-1}.
 
 \begin{figure}[htbp]
     \begin{framed}
-        TODO(write): copy reasoning and output from logs
+        Reasoning (overview of internal reasoning process returned by the provider): \\
+        \textit{"I've compiled and cross-referenced the land area data for all 39 Washington county seats. I've definitively identified the largest and smallest among them based on this verified information."} \\
+        Output: \\
+        \textit{"Largest county seat: Seattle \\
+        Smallest county seat: Pomeroy"}
     \end{framed}
     \caption{Model output while completing step 1}
     \label{figure:gaia-question-task-execution-example-step-1}
@@ -1885,9 +1889,9 @@ Subsequent reevaluation step receives the output, and generates 2 additional ste
 
 \begin{enumerate}
     \setcounter{enumi}{2}
-    \item \textbf{Prompt:} Fetch 2020 census populations of Seattle and Pomeroy. \\ % TODO(write): swap these for actual prompt from logs
+    \item \textbf{Prompt:} "Find the official 2020 Census population for both Seattle, Washington, and Pomeroy, Washington. Use a web search to find the exact population figures as reported by the 2020 decennial census (data.census.gov)." \\
     \textbf{Required Capabilities:} native web search
-    \item \textbf{Prompt:} Calculate and return the final answer. \\
+    \item \textbf{Prompt:} "Calculate the integer difference between the 2020 populations of Seattle and Pomeroy obtained in the previous step. Verify that the response format matches the requirement exactly, and output 'Final Answer: [difference]' at the very end of your response." \\
     \textbf{Required Capabilities:} none
 \end{enumerate}
 
@@ -1895,13 +1899,15 @@ The third step is completed by \textit{Gemini 2.5 Flash}. Output is shown on fig
 
 \begin{figure}[htbp]
     \begin{framed}
-        TODO(write): copy reasoning and output from logs
+        Output: \\
+        \textit{"Seattle 2020 Census Population: 737,015 \\
+        Pomeroy 2020 Census Population: 1,389"}
     \end{framed}
     \caption{Model output while completing step 3}
     \label{figure:gaia-question-task-execution-example-step-3}
 \end{figure}
 
-The final step, completed by \textit{Deepseek R1}, returns the final answer: $736~455$.
+The final step, completed by \textit{Deepseek R1}, returns the final answer: $735~626$.
 
 \subsection{Results}
 
