@@ -204,9 +204,10 @@
 \begin{center}
 \title
 \end{center}
-TODO(write)\\
 
-\noindent \textbf{Keywords:} TODO(write), ...
+The work focuses on the implementation of a multi-model LLM task completion system with dynamic planning. The central problem that it addresses and explores is an extension of the LLM routing problem, attempting to assign each query to the most fitting LLM model out of a set, optimizing for response quality and request cost. A range of approaches is tested, however no implemented model turned out to be able to improve baseline results, achieving accuracy of $62.61 \%$ on \textit{LMArena} human comparison datastet, and $75.64 \%$ on \textit{Chatbot Arena}. In an attempt to improve extendability to new LLM models without requiring human-annotated comparison data, an LLM fingerprinting system is implemented, achieving consistent distinguishability between LLMs based on their outputs. The problem of LLM request cost prediction is addressed, which leads to exploration of response token count prediction models, with varying success. Finally, the system is tested on \textit{GAIA} benchmark, achieving accuracy of $41.26 \%$ while routing over LLMs included in \textit{LMArena} dataset. \\
+
+\noindent \textbf{Keywords:} Machine learning, large language models, supervised learning, neural networks
 \end{abstract}
 }
 
@@ -220,9 +221,9 @@ TODO(write)\\
 \tytul
 \end{center}
 
-TODO(write)\\
+Praca opisuje implementację wielomodelowego systemu LLM opartego o dynamiczne planowanie. Głównym problemem badawczym, który jest eksplorowany, jest wariant problemu \textit{routingu} zapytań między określonym zbiorem modeli LLM, którego celem jest optymalizacja jakości odpowiedzi i kosztu jej uzyskania. W tym celu zaimplementowano i przetestowano różnorodny zbiór modeli uczenia maszynowego. Żaden z modeli nie osiągnął satysfakcjonujących wyników, jedynie marginalnie poprawiając osiąganął przez proste, referencyjne metody - najlepsza konfiguracja uzyskała $62.61 \%$ na zbiorze porównań odpowiedzi \textit{LMArena}, oraz $75.64 \%$ na zbiorze \textit{Chatbot Arena}. Aby umożliwić efektywne rozszerzenie \textit{routingu} do nowych modeli LLM nie polegając na zbiorze ludzkich ewaluacji odpowiedzi, zaimplementowano i zbadano szereg modeli identyfikujących modele LLM na podstawie ich odpowiedzi. Poruszono problem przewidywania kosztu zapytania LLM, w ramach którego eksplorowano możliwości wykorzystania uczenia maszynowego w celu przewidywania długości odpowiedzi modelu LLM - osiągnęły one obiecujące wyniki, jednakże wpływ jakości przewidywań na estymację kosztu okazał się stosunkowo niewielki. Wykonano ewaluację systemu przy pomocy \textit{benchmarku} \textit{GAIA}, na którym osiągnięto dokładność na poziomie $41.26 \%$ przy ograniczeniu dostępnych modeli LLM do zawartych w zbiorze \textit{LMArena}. \\
 
-\noindent \textbf{Słowa kluczowe:} TODO(write), ...
+\noindent \textbf{Słowa kluczowe:} Uczenie maszynowe, duże modele językowe, uczenie nadzorowane, sieci neuronowe
 \end{abstract}
 }
 
@@ -417,6 +418,8 @@ As \textit{RoRF} was published about a month after \textit{RouteLLM} paper, eval
 \end{figure}
 
 While results are similar or better in case of \textit{RoRF}, this improvement likely comes simply from fitting routing models specifically to a given pair of LLMs, rather than training for general case.
+
+% TODO(write): A section with research questions, subproblems, and planned evaluation methods.
 
 \chapter{System Requirements \& Constraints}
 
@@ -1518,7 +1521,7 @@ Response predictive model results are shown on figures \ref{figure:response-pred
 
 Plots tell similar story to previously described approaches. The model is quick to achieve accuracy similar to the prompt-invariant baseline, after which it starts learning patterns which do not generalize to validation set. Monitored metrics don't show any clear cause of this behavior. Gradient magnitudes don't collapse to zero, projection norms decrease in a controlled fashion.
 
-% TODO(review): These plots could be improved
+
 \begin{figure}[h]
     \centering
     \includegraphics[width=\textwidth]{thesis/plots/response-predictive-1-lmarena.png}
@@ -1850,7 +1853,55 @@ Task which are impossible for the system to complete due to lack of support for 
 
 \subsection{Example Task Execution Process}
 
-TODO(write): Choose some task from Gaia, show generated plan, re-evaluations, etc.
+Task completion process that the system relies on can be illustrated by examining how a chosen question from \textit{GAIA} benchmark was answered, step-by-step. The question is presented on figure \ref{figure:gaia-question-task-execution-example}.
+
+\begin{figure}[htbp]
+    \begin{framed}
+        As of the 2020 census, what was the population difference between the largest county seat and smallest county seat, by land area of the county seat, in Washington state? For population figures, please use the official data from data.census.gov. Please report the integer difference.
+    \end{framed}
+    \caption{Example GAIA question}
+    \label{figure:gaia-question-task-execution-example}
+\end{figure}
+
+When the task is created, the initial planning step is queued. A call to \textit{Gemini 3.1 Pro Preview} returns a structured list of steps, which, in this case, is quite short:
+
+\begin{enumerate}
+    \item \textbf{Prompt:} Search land areas of all Washington county seats. \\ % TODO(write): swap these for actual prompt from logs
+    \textbf{Required Capabilities:} native web search, reasoning
+    \item \textbf{Prompt:} Reevaluate based on findings (this is a reevaluation step).
+\end{enumerate}
+
+To complete the first step, \textit{Gemini 2.5 Flash Lite} is chosen. The model completes the task, producing output presented on figure \ref{figure:gaia-question-task-execution-example-step-1}.
+
+\begin{figure}[htbp]
+    \begin{framed}
+        TODO(write): copy reasoning and output from logs
+    \end{framed}
+    \caption{Model output while completing step 1}
+    \label{figure:gaia-question-task-execution-example-step-1}
+\end{figure}
+
+Subsequent reevaluation step receives the output, and generates 2 additional steps:
+
+\begin{enumerate}
+    \setcounter{enumi}{2}
+    \item \textbf{Prompt:} Fetch 2020 census populations of Seattle and Pomeroy. \\ % TODO(write): swap these for actual prompt from logs
+    \textbf{Required Capabilities:} native web search
+    \item \textbf{Prompt:} Calculate and return the final answer. \\
+    \textbf{Required Capabilities:} none
+\end{enumerate}
+
+The third step is completed by \textit{Gemini 2.5 Flash}. Output is shown on figure \ref{figure:gaia-question-task-execution-example-step-3}.
+
+\begin{figure}[htbp]
+    \begin{framed}
+        TODO(write): copy reasoning and output from logs
+    \end{framed}
+    \caption{Model output while completing step 3}
+    \label{figure:gaia-question-task-execution-example-step-3}
+\end{figure}
+
+The final step, completed by \textit{Deepseek R1}, returns the final answer: $736~455$.
 
 \subsection{Results}
 
@@ -1866,7 +1917,7 @@ Performance of agentic systems on the benchmark varies, significantly improving 
 
 The system was evaluated with restricted set of available LLMs (described in section \ref{section:model-restriction}). To ensure that quality prediction models can assign a meaningful score to every LLM, only LLMs included in \textit{LMArena} dataset could be chosen.
 
-Overall, the system achieved $41.26$ accuracy across all benchmark tasks. $54.35 \%$ accuracy was achieved on level 1 tasks, $41.03 \%$ - on level 2, and $10.53 \%$ - on level 3. Interestingly, a significant portion of failures (13 out of 84) is not caused by reasoning errors, but by inaccurate output format. Regularly, instead of responding with a single number, LLM produces a full sentence response, or given an instruction to output a comma-separated list of items returns a JSON-style list (enclosed in square brackets). This behavior persists after adjusting the evaluation prompt to highlight the importance of exact output format, and to suggest an additional format-checking step during initial planning LLM call. Treating these answers as correct, the overall accuracy of the system rises to $50.35 \%$.
+Overall, the system achieved $41.26 \%$ accuracy across all benchmark tasks. $54.35 \%$ accuracy was achieved on level 1 tasks, $41.03 \%$ - on level 2, and $10.53 \%$ - on level 3. Interestingly, a significant portion of failures (13 out of 84) is not caused by reasoning errors, but by inaccurate output format. Regularly, instead of responding with a single number, LLM produces a full sentence response, or given an instruction to output a comma-separated list of items returns a JSON-style list (enclosed in square brackets). This behavior persists after adjusting the evaluation prompt to highlight the importance of exact output format, and to suggest an additional format-checking step during initial planning LLM call. Treating these answers as correct, the overall accuracy of the system rises to $50.35 \%$.
 
 \subsubsection{Performance with a Single Step Completion LLM}
 
