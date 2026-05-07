@@ -419,8 +419,6 @@ As \textit{RoRF} was published about a month after \textit{RouteLLM} paper, eval
 
 While results are similar or better in case of \textit{RoRF}, this improvement likely comes simply from fitting routing models specifically to a given pair of LLMs, rather than training for general case.
 
-% TODO(write): A section with research questions, subproblems, and planned evaluation methods.
-
 \chapter{System Requirements \& Constraints}
 
 The implementation of the system was preceded by defining a set of requirements that it should satisfy, as well as constraints to it's functionalities. As the system is mainly designed for personal use and demonstration purposes, rather than for a hosted instance to be accessed by general public, user-friendliness and security requirements are of secondary concern and are not discussed in this section.
@@ -457,6 +455,18 @@ The implementation of the system was preceded by defining a set of requirements 
     \item \textbf{Response quality will be predicted based only on the LLM and request prompt.} \\
     As described in section \ref{section:planning-and-reevaluation}, step definition contains more information than just the prompt. This data could be used as prediction input, potentially improving the accuracy of assigned scores. It was decided not to do so, mainly because of lack of datasets that could be used for training.
 \end{enumerate}
+
+\chapter{Research Questions} % TODO(review): improve name?
+
+As described in the introduction, the project is motivated by the implementation of an LLM task completion system. While this goal is deeply practical, without a singular research topic encapsulating the entire work, requirements specified in section \ref{section:requirements} do imply a set of problems that can be explored.
+
+The central research problem of the project is the exploration of LLM response quality prediction. A similar question is explored by referenced works - in particular, \textit{RouteLLM} paper \cite{ong2025routellm}, and \textit{Routing on Random Forests} article \cite{notdiamond2024rorf}. However, while these works research the effectiveness of routing queries between a single pair of LLM models which differ in level of "intelligence" (for example, different-sized variants offered by a single provider), this work instead focuses on assigning a response quality score based on selected LLM model and provided prompt, making it possible to compare any pair of LLMs. It is an extension of the routing problem addressed by these works. Effectiveness of machine learning models implemented for that purpose will be measured by the accuracy they obtain over the \textit{LMArena} comparison dataset (described in section \ref{section:dataset-selection}).
+
+The second research question of the project stems from requirements related to the extendability of the response quality prediction component. As motivated in section \ref{section:requirements}, relying on a human-annotated comparison data to extend the quality prediction models to new LLMs is not practical. To ensure that such extension requires only a set of prompt and response pairs from a new LLM model, embedding models are introduced - they produce embedding vectors representing LLM models, based only on their response data. This topic is closely related to LLM fingerprinting: the problem of recognizing an LLM model based on a small sample of it's responses. LLM embedding mechanism has two main purposes: ensuring distinguishability between models, so that a subset of responses produced by a given LLM is likely to be correctly recognized, and usefulness in response quality prediction. The first quality will be measured by a special distinguishability metric, defined in section \ref{section:llm-embedding}, while the second quality will be verified by extending a trained quality prediction component to an unseen LLM model, and measuring it's accuracy over new comparison pairs.
+
+As specified in requirements, prompt routing will be performed based on predicted response quality and estimated request cost. While LLM pricing rules are usually clear, accurate calculation of the cost before the request is made is not possible due to it's dependence on the LLM behavior and output - among other factors, the number of tokens in returned response. Prediction of this quantity is the third research problem of this project. Machine learning models implemented to predict output token counts will be evaluated based on their accuracy on LLM requests included in \textit{LMArena} dataset. In addition to the exploration of effectiveness of various prediction models, the project will measure the impact of length prediction errors on cost estimation error - as LLM request costs depend on a variety of factors, it's possible that accurate prediction of response token count impacts the estimation to a lower extent. 
+
+In addition to measuring the performance of parts of the system specified above, effectiveness of the whole system will be verified. This will be achieved using \textit{GAIA} benchmark (described in section \ref{section:solution-analysis}), which evaluates the implementation on a set of multi-step tasks. However, maximizing the accuracy over this benchmark is not the primary goal - it would require experiments in prompt and context engineering, which won't be performed.
 
 \chapter{Description of the System}
 
@@ -663,7 +673,7 @@ Cost of file inputs depends on their type.
 
 Requirements described in section \ref{section:requirements} state that the system should be independent from the set of LLMs whose prompt and response data was included in the dataset used for scoring model creation, handling unknown LLM IDs and assigning scores based on certain mean LLM representation. This requirement ensures that the set of LLM models available through \textit{OpenRouter} doesn't need to be restricted in any way. While useful in practice, this characteristic is undesired when testing the system. For that purpose, a possibility of limiting the set of available LLMs was introduced. If the list of allowed model names is set through an API endpoint, Only specified LLMs will be used for step completion. This ensures that, when the system is tested, all available LLMs can be scored without falling back to average LLM representation.
 
-\chapter{Scoring}
+\chapter{Response Quality Prediction}
 
 Prediction of expected quality of the response that chosen LLM would return, given a certain prompt, is the main research aspect of this work. As described in section \ref{section:llm-selection}, predicted LLM scores, along with estimated request cost, are used to determine which LLM should be utilized while completing a step. 
 
@@ -1256,14 +1266,14 @@ In both cases, improvement is marginal. Over the first 30 training epochs, train
 
 % TODO(maybe): Ablation study - change 1 parameter in used config and check how accuracy changes
 
-\begin{figure}[h]
+\begin{figure}[!h]
     \centering
     \includegraphics[width=\textwidth]{thesis/plots/dn-embedding-scoring-lmarena.png}
     \caption{DNN model results - \textit{LMArena}}
     \label{figure:dnn-scoring-results-lmarena}
 \end{figure}
 
-\begin{figure}[h]
+\begin{figure}[!h]
     \centering
     \includegraphics[width=\textwidth]{thesis/plots/dn-embedding-scoring-chatbot-arena.png}
     \caption{DNN model results - \textit{Chatbot Arena}}
@@ -1311,14 +1321,14 @@ Both sets of plots look very similar. Training loss behaves similarly to validat
 
 Despite these similarities, model performance over each dataset is quite different. In case of \textit{Chatbot Arena}, validation accuracy is rising over the training period, albeit significantly slower than training accuracy. Best recorded validation accuracy of $75.27 \%$ is achieved after 66 training epochs. \textit{LMArena} model does not exhibit the same behavior. While the best validation accuracy of $62.38 \%$ is recorded after a similar number of epochs, it's values don't change nearly as much, and the improvement can be attributed to chance. It seems that the relationship between prompt embedding vectors and assigned score, that the model learns over the training duration, partially generalizes to validation set in case of \textit{Chatbot Arena}. This generalization does not exist in \textit{LMArena} dataset.
 
-\begin{figure}[h]
+\begin{figure}[!h]
     \centering
     \includegraphics[width=\textwidth]{thesis/plots/gradient-boosting-lmarena.png}
     \caption{Gradient boosting model results - \textit{LMArena}}
     \label{figure:gradient-boosting-scoring-results-lmarena}
 \end{figure}
 
-\begin{figure}[h]
+\begin{figure}[!h]
     \centering
     \includegraphics[width=\textwidth]{thesis/plots/gradient-boosting-chatbot-arena.png}
     \caption{Gradient boosting model results - \textit{Chatbot Arena}}
@@ -1421,14 +1431,14 @@ In both cases, model performance is not the best. Scoring accuracy on both datas
 
 Score variance decomposition and gradient attribution plots show strong reliance on model embeddings, which does not change over the training period. However, projection norms and gradient magnitudes don't collapse to 0. It seems like the model is simply not able to find any useful relationships between prompt information and assigned score, instead relying on LLM identity.
 
-\begin{figure}[h]
+\begin{figure}[!h]
     \centering
     \includegraphics[width=\textwidth]{thesis/plots/transformer-lmarena.png}
     \caption{Transformer model results - \textit{LMArena}}
     \label{figure:transformer-results-lmarena}
 \end{figure}
 
-\begin{figure}[h]
+\begin{figure}[!h]
     \centering
     \includegraphics[width=\textwidth]{thesis/plots/transformer-chatbot-arena.png}
     \caption{Transformer model results - \textit{Chatbot Arena}}
@@ -1522,28 +1532,28 @@ Response predictive model results are shown on figures \ref{figure:response-pred
 Plots tell similar story to previously described approaches. The model is quick to achieve accuracy similar to the prompt-invariant baseline, after which it starts learning patterns which do not generalize to validation set. Monitored metrics don't show any clear cause of this behavior. Gradient magnitudes don't collapse to zero, projection norms decrease in a controlled fashion.
 
 
-\begin{figure}[h]
+\begin{figure}[!h]
     \centering
     \includegraphics[width=\textwidth]{thesis/plots/response-predictive-1-lmarena.png}
     \caption{Response predictive model results - \textit{LMArena}}
     \label{figure:response-predictive-results-lmarena}
 \end{figure}
 
-\begin{figure}[h]
+\begin{figure}[!h]
     \centering
     \includegraphics[width=\textwidth]{thesis/plots/response-predictive-2-lmarena.png}
     \caption{Loss values of response predictive model - \textit{LMArena}}
     \label{figure:response-predictive-loss-lmarena}
 \end{figure}
 
-\begin{figure}[h]
+\begin{figure}[!h]
     \centering
     \includegraphics[width=\textwidth]{thesis/plots/response-predictive-1-chatbot-arena.png}
     \caption{Response predictive model results - \textit{Chatbot Arena}}
     \label{figure:response-predictive-results-chatbot-arena}
 \end{figure}
 
-\begin{figure}[h]
+\begin{figure}[!h]
     \centering
     \includegraphics[width=\textwidth]{thesis/plots/response-predictive-2-chatbot-arena.png}
     \caption{Loss values of response predictive model - \textit{Chatbot Arena}}
@@ -1571,14 +1581,14 @@ Multistage approach was tested using prompt-invariant gradient boosting model as
 
 Plots look similar to their counterparts describing the variant without the base model. Expectedly, the main difference is a much shorter and less steep initial learning period, during which training and validation accuracy rise together to the baseline level - the baseline is the starting point in this case. 
 
-\begin{figure}[h]
+\begin{figure}[!h]
     \centering
     \includegraphics[width=\textwidth]{thesis/plots/dn-embedding-multistage-lmarena.png}
     \caption{Multistage model results - \textit{LMArena}}
     \label{figure:dnn-multistage-results-lmarena}
 \end{figure}
 
-\begin{figure}[h]
+\begin{figure}[!h]
     \centering
     \includegraphics[width=\textwidth]{thesis/plots/dn-embedding-multistage-chatbot-arena.png}
     \caption{Multistage model results - \textit{Chatbot Arena}}
@@ -1737,14 +1747,14 @@ LLM ID and embedding vectors are used in a small fraction of splits. This might 
 
 Interestingly, the model tends to overestimate the response length by a significant margin. It's predictions also exhibit significantly smaller variance than training data.
 
-\begin{figure}[h]
+\begin{figure}[!h]
     \centering
     \includegraphics[width=\textwidth]{thesis/plots/gb-length-prediction-lmarena.png}
     \caption{Gradient boosting model results - \textit{LMArena}}
     \label{figure:gb-length-prediction-metrics-lmarena}
 \end{figure}
 
-\begin{figure}[h]
+\begin{figure}[!h]
     \centering
     \includegraphics[width=\textwidth]{thesis/plots/gb-length-prediction-chatbot-arena.png}
     \caption{Gradient boosting model results - \textit{Chatbot Arena}}
@@ -1784,16 +1794,16 @@ Both models reach accuracy maximum quite quickly, after which they overfit. Stil
 
 The model tends to overestimate the length of the response, and it's predictions have lower variance than the training set. This behavior is very similar to gradient boosting models described in previous section.
 
-The model behaves quite chaotically, as seen on all plots. Metric values change rapidly between subsequent epochs. This suggests that learning rate may be too high. However, lower learning rate results in significantly smaller peak accuracy - overfitting begins earlier (after correcting for slower changes), causing validation accuracy to stop growing at earlier point. % TODO(write): Give example with some numbers
+The model behaves quite chaotically, as seen on all plots. Metric values change rapidly between subsequent epochs. This suggests that learning rate may be too high. However, lower learning rate results in significantly smaller peak accuracy - overfitting begins earlier (after correcting for slower changes), causing validation accuracy to stop growing at earlier point. Reducing the learning rate from $0.005$ to $0.001$ and $0.0005$ results in accuracies of $47.43 \%$ and $43.75 \%$ on \textit{LMArena}, and $46.70 \%$ and $45.52 \%$ on \textit{Chatbot Arena}.
 
-\begin{figure}[h]
+\begin{figure}[!h]
     \centering
     \includegraphics[width=\textwidth]{thesis/plots/dn-embedding-length-prediction-lmarena.png}
     \caption{DNN model results - \textit{LMArena}}
     \label{figure:dn-embedding-length-prediction-metrics-lmarena}
 \end{figure}
 
-\begin{figure}[h]
+\begin{figure}[!h]
     \centering
     \includegraphics[width=\textwidth]{thesis/plots/dn-embedding-length-prediction-chatbot-arena.png}
     \caption{DNN model results - \textit{Chatbot Arena}}
