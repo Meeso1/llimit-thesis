@@ -205,7 +205,7 @@
 \title
 \end{center}
 
-The work focuses on the implementation of a multi-model LLM task completion system with dynamic planning. The central problem that it addresses and explores is an extension of the LLM routing problem, attempting to assign each query to the most fitting LLM model out of a set, optimizing for response quality and request cost. A range of approaches is tested, however no implemented model turned out to be able to improve baseline results, achieving accuracy of $62.61 \%$ on \textit{LMArena} human comparison datastet, and $75.64 \%$ on \textit{Chatbot Arena}. In an attempt to improve extendability to new LLM models without requiring human-annotated comparison data, an LLM fingerprinting system is implemented, achieving consistent distinguishability between LLMs based on their outputs. The problem of LLM request cost prediction is addressed, which leads to exploration of response token count prediction models, with varying success. Finally, the system is tested on \textit{GAIA} benchmark, achieving accuracy of $41.26 \%$ while routing over LLMs included in \textit{LMArena} dataset. \\
+The work focuses on the implementation of a multi-model LLM task completion system with dynamic planning. The central problem that it addresses and explores is an extension of the LLM routing problem, attempting to assign each query to the most fitting LLM model out of a set, optimizing for response quality and request cost. A range of approaches is tested, however no implemented model turned out to be able to improve baseline results, achieving accuracy of $62.61 \%$ on \textit{LMArena} human comparison dataset, and $75.64 \%$ on \textit{Chatbot Arena}. In an attempt to improve extendability to new LLM models without requiring human-annotated comparison data, an LLM fingerprinting system is implemented, achieving consistent distinguishability between LLMs based on their outputs. The problem of LLM request cost prediction is addressed, which leads to exploration of response token count prediction models, with varying success. Finally, the system is tested on \textit{GAIA} benchmark, achieving accuracy of $41.26 \%$ while routing over LLMs included in \textit{LMArena} dataset. \\
 
 \noindent \textbf{Keywords:} Machine learning, large language models, supervised learning, neural networks
 \end{abstract}
@@ -268,7 +268,7 @@ Praca opisuje implementację wielomodelowego systemu LLM opartego o dynamiczne p
 
 Recent inventions in artificial intelligence technology, championed by large language models, were without a doubt a milestone for humanity. The selection of publicly accessible LLM models is vast, with new releases occurring weekly. While the quality of newly published LLMs keeps improving, the ever-growing number of possibilities makes optimal usage more difficult. LLMs have different strong and weak sides, support different input modalities and capabilities (like web search), and are priced by different rules.
 
-Differences between LLMs have the biggest impact during complex prompts, which require multi-domain knowledge or capabilities. Recent shift to to agentic approaches provides a partial solution to the problem of the complexity exceeding single-call "intelligence" of a given LLM. Most providers offer some kind of agentic wrapper for offered LLMs, which implement multi-turn thinking loops and tool use (for example: \textit{ChatGPT} Deep Research, \textit{Claude} Research Mode). However, the goal of these systems is simply to improve response quality while using a chosen LLM model - they don't feature dynamic LLM selection mechanisms. A multi-domain task completion quality will be bottlenecked by the aspect that least closely aligns with chosen LLM's strengths. 
+Differences between LLMs have the biggest impact during complex prompts, which require multi-domain knowledge or capabilities. Recent shift to agentic approaches provides a partial solution to the problem of the complexity exceeding single-call "intelligence" of a given LLM. Most providers offer some kind of agentic wrapper for offered LLMs, which implement multi-turn thinking loops and tool use (for example: \textit{ChatGPT} Deep Research, \textit{Claude} Research Mode). However, the goal of these systems is simply to improve response quality while using a chosen LLM model - they don't feature dynamic LLM selection mechanisms. A multi-domain task completion quality will be bottlenecked by the aspect that least closely aligns with chosen LLM's strengths. 
 
 An argument can also be made about cost optimization. It's common that certain parts of task completion process are extremely straightforward and simple, while other require complex reasoning. While response quality would likely benefit from using a more capable and expensive LLM model for the latter, choosing a cheaper alternative for the former would likely reduce overall cost without significantly affecting output quality.
 
@@ -278,26 +278,26 @@ The goal of this work is the implementation of an agentic system which addresses
 
 Partial problems that the system solves are addressed in a number of works and solutions, both open and commercial. Task execution planning that relies on a dynamic list of steps is used by numerous, if not most, agentic systems. Agentic code editors, like \textit{Cursor} \cite{cursor2024}, either implicitly rely on this approach to complete complex user requests, or are able to use it conditionally. Computer use agents, like \textit{Simular's} \textit{Agent S2} \cite{agashe2025agents2}, often use step-based planning as a foundation of their operations. 
 
-Dynamic selection of LLM models is researched by a range of works, albeit this problem is usually less critical than dynamic planning for most systems, since often usage of a single LLM model is sufficient for a specific kind of operation that a given solution needs to perform. I.~Ong et. al. in \textit{RouteLLM: Learning to Route LLMs with Preference Data} \cite{ong2025routellm} paper focus on routing prompts between two groups of LLMs - weaker but cheaper, and more expensive but stronger models - with the purpose of reducing average response cost while minimizing quality reduction. \textit{RoRF: Routing on Random Forests} blog post by \textit{Not Diamond} \cite{notdiamond2024rorf} describes a simpler variant of the same problem, using random forests to route prompts between pairs of LLMs. 
+Dynamic selection of LLM models is researched by a range of works, albeit this problem is usually less critical than dynamic planning for most systems, since often usage of a single LLM model is sufficient for a specific kind of operation that a given solution needs to perform. I.~Ong et al. in \textit{RouteLLM: Learning to Route LLMs with Preference Data} \cite{ong2025routellm} paper focus on routing prompts between two groups of LLMs - weaker but cheaper, and more expensive but stronger models - with the purpose of reducing average response cost while minimizing quality reduction. \textit{RoRF: Routing on Random Forests} blog post by \textit{Not Diamond} \cite{notdiamond2024rorf} describes a simpler variant of the same problem, using random forests to route prompts between pairs of LLMs. 
 % TODO(maybe): 1 more example?.
 
 \section{Cursor}
 
 \textit{Cursor} is an agentic code editor, using a variety of LLM models to generate code and create software. When completing complex user requests, planning is critical, and as such, \textit{Cursor} includes certain tools and solutions for this. Cursor code editing agents use two main approaches to planning: step-based, using a \textit{todo} list tool, and text-based, via planning mode \footnote{\url{https://docs.cursor.com/agent/planning-mode}}.
 
-\textit{Todo} list approach relies on a simple tool that the agent can call, supplying a list of steps required to complete the task. Subsequently, currently active planned step will be included in agent's context until it is marked as complete, after which the next one will take it's place, and so on. While extremely simple, The mechanism does ensure that the agent "stays on track", and doesn't forget crucial requirements over time. 
+\textit{Todo} list approach relies on a simple tool that the agent can call, supplying a list of steps required to complete the task. Subsequently, currently active planned step will be included in agent's context until it is marked as complete, after which the next one will take its place, and so on. While extremely simple, the mechanism does ensure that the agent "stays on track", and doesn't forget crucial requirements over time. 
 
-Planning mode behaves differently, and is even more simple. When asked to plan changes, instead of performing edits right away, the agent will investigate the codebase, and prepare a detailed plan of required changes in form of a markdown file. Then, such plan can be followed by another agent. As the plan is a file, instead of being only contained in LLM context, agent can read it whenever necessary, preventing it from forgetting information while completing the task. This approach seems to be more dominant in other agentic coding tools (i.e. Github Copilot \footnote{\url{https://docs.github.com/en/copilot}} and Claude Code \footnote{\url{https://docs.anthropic.com/en/docs/claude-code/overview}}).
+Planning mode behaves differently, and is even more simple. When asked to plan changes, instead of performing edits right away, the agent will investigate the codebase, and prepare a detailed plan of required changes in the form of a markdown file. Then, such plan can be followed by another agent. As the plan is a file, instead of being only contained in LLM context, agent can read it whenever necessary, preventing it from forgetting information while completing the task. This approach seems to be more dominant in other agentic coding tools (i.e. GitHub Copilot \footnote{\url{https://docs.github.com/en/copilot}} and Claude Code \footnote{\url{https://docs.anthropic.com/en/docs/claude-code/overview}}).
 
 In both cases, no specific mechanism is implemented to generate the plan - it is simply done by querying chosen LLM model, with instructions and relevant context included in the prompt.
 
 \section{Agent S2}
 
-\textit{Agent S2} is a multi-LLM computer use agentic system described by S.~Agashe et. al. in \textit{Agent S2: A Compositional Generalist-Specialist Framework for Computer Use Agents} \cite{agashe2025agents2}, designed to perform tasks requiring general UI usage via keyboard and mouse inputs. It's planning mechanism, called \textit{Proactive Hierarchical Planning} (PHP), relies on breaking down the task into a list of steps, that are then completed sequentially.
+\textit{Agent S2} is a multi-LLM computer use agentic system described by S.~Agashe et al. in \textit{Agent S2: A Compositional Generalist-Specialist Framework for Computer Use Agents} \cite{agashe2025agents2}, designed to perform tasks requiring general UI usage via keyboard and mouse inputs. Its planning mechanism, called \textit{Proactive Hierarchical Planning} (PHP), relies on breaking down the task into a list of steps, that are then completed sequentially.
 
 The agent operates on two levels of hierarchy. Planning - step list generation - is performed by a \textit{Manager} module based on task description and current state (given by a screenshot). Then, steps are completed in sequence by the \textit{Worker} module through an appropriate sequence of actions (clicks, keystrokes, etc.).
 
-As the name suggests, PHP mechanism is proactive - step list is regenerated not only when step execution fails, but after a each step (illustrated by diagram \ref{fig:agent-s2-flow}). When \textit{Worker} module finishes work on a given step, either successfully or not, \textit{Manager} model is invoked to generate a new step list based on previously generated list, and current state. This unusual decision is especially important in computer use tasks, where exact state of UI after step completion is hard to predict exactly (pop-ups, partial results, time-sensitive states, etc.).
+As the name suggests, PHP mechanism is proactive - step list is regenerated not only when step execution fails, but after each step (illustrated by diagram \ref{fig:agent-s2-flow}). When \textit{Worker} module finishes work on a given step, either successfully or not, \textit{Manager} model is invoked to generate a new step list based on previously generated list, and current state. This unusual decision is especially important in computer use tasks, where exact state of UI after step completion is hard to predict exactly (pop-ups, partial results, time-sensitive states, etc.).
 
 Usefulness of this design decision is confirmed by an ablation study. The paper compares performance of the system utilizing PHP mechanism, with a modification that only reevaluates the plan reactively. Evaluation using \textit{OSWorld} benchmark \cite{xie2024osworld} shows a $+4.62 \%$ success rate increase over reactive planning at 15 steps, and $+6.15 \%$ increase at 50 steps.
 
@@ -314,7 +314,7 @@ Similarly to plan generation methods implemented in \textit{Cursor}, no special 
 \section{RouteLLM: Learning to Route LLMs with Preference Data}
 \label{section:routellm}
 
-\textit{RouteLLM} paper attempts to solve the problem of routing LLM prompts between 2 groups of models, differing in capabilities and cost. Proposed solutions can be described as probability-predicting functions $P_\theta$, such that the routing decision is then decided using the function described by equation \ref{equation:routellm-routing}, parametrized by $\alpha$. $P_\theta$ predicts probability that, for a given prompt, a model from stronger group will produce a response that is strictly better than a response of a model from weaker group. If the probability is higher then a set threshold, prompt is routed to a stronger group. Otherwise, if probability of achieving a similarly good response from weaker models is sufficient, prompt is directed to weaker group.
+\textit{RouteLLM} paper attempts to solve the problem of routing LLM prompts between 2 groups of models, differing in capabilities and cost. Proposed solutions can be described as probability-predicting functions $P_\theta$, such that the routing decision is then decided using the function described by equation \ref{equation:routellm-routing}, parametrized by $\alpha$. $P_\theta$ predicts probability that, for a given prompt, a model from stronger group will produce a response that is strictly better than a response of a model from weaker group. If the probability is higher than a set threshold, prompt is routed to a stronger group. Otherwise, if probability of achieving a similarly good response from weaker models is sufficient, prompt is directed to weaker group.
 
 \begin{equation}
 \label{equation:routellm-routing}
@@ -340,12 +340,12 @@ Paper proposes four distinct probability-predicting methods:
 
 \begin{enumerate}
     \item \textbf{Similarity-weighted (SW) Ranking} \\
-    A non-parametric, inference time method. For a given input query, cosine similarity is computed between it's embedding vector (generated using \textit{OpenAI's} \texttt{text-embedding-3-small} model) and embeddings of all other queries in the training set. These similarities are used to compute exponential sample weights, according to equation \ref{equation:routellm-swr} ($v_q$ and $v_{q'}$ represent embedding vectors computed from queries $q$ and $q'$).
+    A non-parametric, inference time method. For a given input query, cosine similarity is computed between its embedding vector (generated using \textit{OpenAI's} \texttt{text-embedding-3-small} model) and embeddings of all other queries in the training set. These similarities are used to compute exponential sample weights, according to equation \ref{equation:routellm-swr} ($v_q$ and $v_{q'}$ represent embedding vectors computed from queries $q$ and $q'$).
     \begin{equation}
     \label{equation:routellm-swr}
         \omega'(q, q') = \gamma^{1 + S(q, q')}, \quad S(q, q') = \frac{v_q \cdot v_{q'}}{\|v_q\|\|v_{q'}\|} \cdot \max_{1 \le s \le |D|} \frac{v_{q'} \cdot v_q}{\|v_{q'}\|\|v_q\|}
     \end{equation}
-    Subsequently, a Bradley-Terry model is fit, minimizing binary cross-entropy, with sample weights given by the formula \ref{equation:routellm-swr}. It's output is then returned as predicted probability.
+    Subsequently, a Bradley-Terry model is fit, minimizing binary cross-entropy, with sample weights given by the formula \ref{equation:routellm-swr}. Its output is then returned as predicted probability.
     \item \textbf{Matrix Factorization} \\
     The model learns a bilinear scoring function, given by equation \ref{equation:routellm-matrix-factorization-score}. Then, predicted probability is given by formula \ref{equation:routellm-matrix-factorization-probability}. \\
     $v_q$, like in previous method, represents a text embedding of query $q$. $v_m$ is a learnable model tier embedding - a separate embedding is learned for each model tier identified in dataset preprocessing in section \ref{section:routellm-datasets}, not only for two model groups that routing is decided between. The model is fit through gradient descent, using \textit{Adam} optimizer and binary cross-entropy objective function.
@@ -358,7 +358,7 @@ Paper proposes four distinct probability-predicting methods:
         P_\theta(\text{win}_s \mid q) = \sigma\left(\delta(M_s, q) - \delta(M_w, q)\right)
     \end{equation}
     \item \textbf{BERT Classifier} \\
-    Full fine-tuning was performed on \texttt{BERT-base} transformer model \cite{devlin2019bert}. The final predicted probability is determined passing \texttt{CLS} token embedding through logistic regression head. 
+    Full fine-tuning was performed on \texttt{BERT-base} transformer model \cite{devlin2019bert}. The final predicted probability is determined by passing \texttt{CLS} token embedding through logistic regression head. 
     \item \textbf{Llama Classifier} \\
     Full fine-tuning of \textit{Llama 3 8B} model. Probability prediction is done by appending new tokens to model vocabulary, representing possible comparison results - the final answer is based on logits assigned to these tokens by the model. 
 \end{enumerate}
@@ -368,7 +368,7 @@ Paper proposes four distinct probability-predicting methods:
 The paper evaluates proposed methods using two metrics:
 
 \begin{itemize}
-    \item \textbf{CPT($x \%$)}: percentage of prompts routed to strong model group, required to reach $x \%$ os strong group performance.
+    \item \textbf{CPT($x \%$)}: percentage of prompts routed to strong model group, required to reach $x \%$ of strong group performance.
     \item \textbf{APGR}: area-under-curve measure of performance gain over random routing.
 \end{itemize}
 
@@ -376,7 +376,7 @@ Evaluation is performed across three benchmarks:
 
 \begin{itemize}
     \item \textbf{MT Bench} \\
-    MT Bench is a set of 160 questions spanning various categories, with response quality being scored on 1-10 scale by an LLM judge \cite{zheng2023mtbench}. Matrix factorizaton method achieves best results, with  $CPT(50 \%) = 13.4 \%$, $CPT(80 \%) = 31.3 \%$, $AGPR = 60.4 \%$.
+    MT Bench is a set of 160 questions spanning various categories, with response quality being scored on 1-10 scale by an LLM judge \cite{zheng2023mtbench}. Matrix factorization method achieves best results, with  $CPT(50 \%) = 13.4 \%$, $CPT(80 \%) = 31.3 \%$, $AGPR = 60.4 \%$.
     \item \textbf{MMLU} \\
     MMLU benchmark is a set of over 14 thousand multiple-choice questions, with objectively correct responses that model outputs can be evaluated against \cite{hendrycks2020mmlu}. SW Ranking method performs the best, with $CPT(50 \%) = 35.4 \%$, $CPT(80 \%) = 71.6 \%$, $AGPR = 20.7 \%$.
     \item \textbf{GSM8K} \\
@@ -421,7 +421,7 @@ While results are similar or better in case of \textit{RoRF}, this improvement l
 
 \chapter{System Requirements \& Constraints}
 
-The implementation of the system was preceded by defining a set of requirements that it should satisfy, as well as constraints to it's functionalities. As the system is mainly designed for personal use and demonstration purposes, rather than for a hosted instance to be accessed by general public, user-friendliness and security requirements are of secondary concern and are not discussed in this section.
+The implementation of the system was preceded by defining a set of requirements that it should satisfy, as well as constraints to its functionalities. As the system is mainly designed for personal use and demonstration purposes, rather than for a hosted instance to be accessed by general public, user-friendliness and security requirements are of secondary concern and are not discussed in this section.
 
 \section{Requirements}
 \label{section:requirements}
@@ -438,7 +438,7 @@ The implementation of the system was preceded by defining a set of requirements 
     \item \textbf{Response quality should be predicted using machine learning methods, based on the LLM and request prompt.} \\
     To be able to learn and utilize domain-specific LLM strengths, scoring must be performed in a prompt-aware way.
     \item \textbf{The scoring component should be extendable to new LLMs without requiring human comparison data.} \\
-    As described in section \ref{section:dataset-selection}, constructing a human evaluation dataset for a given set of LLMs is much harder than simply gathering LLM responses to a varied set of prompts. While high quality human comparison datasets are available, the pace at which new LLMs are released causes any such newly published dataset to immediately become outdated. To mitigate this problem, the scoring component should be able to infer required information about a new LLM given only a set of prompts and it's responses.
+    As described in section \ref{section:dataset-selection}, constructing a human evaluation dataset for a given set of LLMs is much harder than simply gathering LLM responses to a varied set of prompts. While high quality human comparison datasets are available, the pace at which new LLMs are released causes any such newly published dataset to immediately become outdated. To mitigate this problem, the scoring component should be able to infer required information about a new LLM given only a set of prompts and its responses.
     \item \textbf{The scoring component should be able to assign a score to an unseen LLM.} \\
     New LLMs are released often. Without some fallback handling of unseen LLMs, the system would either require prompt and response data from all available LLMs to function, or some LLM whitelist mechanism would be necessary. The first option is extremely inconvenient, while the second is too restrictive. Falling back to some default scoring behavior is a more practical alternative. Obviously, as no information is available about previously unseen LLMs, assigned score likely won't be too accurate.
 \end{enumerate}
@@ -462,17 +462,17 @@ As described in the introduction, the project is motivated by the implementation
 
 The central research problem of the project is the exploration of LLM response quality prediction. A similar question is explored by referenced works - in particular, \textit{RouteLLM} paper \cite{ong2025routellm}, and \textit{Routing on Random Forests} article \cite{notdiamond2024rorf}. However, while these works research the effectiveness of routing queries between a single pair of LLM models which differ in level of "intelligence" (for example, different-sized variants offered by a single provider), this work instead focuses on assigning a response quality score based on selected LLM model and provided prompt, making it possible to compare any pair of LLMs. It is an extension of the routing problem addressed by these works. Effectiveness of machine learning models implemented for that purpose will be measured by the accuracy they obtain over the \textit{LMArena} comparison dataset (described in section \ref{section:dataset-selection}).
 
-The second research question of the project stems from requirements related to the extendability of the response quality prediction component. As motivated in section \ref{section:requirements}, relying on a human-annotated comparison data to extend the quality prediction models to new LLMs is not practical. To ensure that such extension requires only a set of prompt and response pairs from a new LLM model, embedding models are introduced - they produce embedding vectors representing LLM models, based only on their response data. This topic is closely related to LLM fingerprinting: the problem of recognizing an LLM model based on a small sample of it's responses. LLM embedding mechanism has two main purposes: ensuring distinguishability between models, so that a subset of responses produced by a given LLM is likely to be correctly recognized, and usefulness in response quality prediction. The first quality will be measured by a special distinguishability metric, defined in section \ref{section:llm-embedding}, while the second quality will be verified by extending a trained quality prediction component to an unseen LLM model, and measuring it's accuracy over new comparison pairs.
+The second research question of the project stems from requirements related to the extendability of the response quality prediction component. As motivated in section \ref{section:requirements}, relying on a human-annotated comparison data to extend the quality prediction models to new LLMs is not practical. To ensure that such extension requires only a set of prompt and response pairs from a new LLM model, embedding models are introduced - they produce embedding vectors representing LLM models, based only on their response data. This topic is closely related to LLM fingerprinting: the problem of recognizing an LLM model based on a small sample of its responses. LLM embedding mechanism has two main purposes: ensuring distinguishability between models, so that a subset of responses produced by a given LLM is likely to be correctly recognized, and usefulness in response quality prediction. The first quality will be measured by a special distinguishability metric, defined in section \ref{section:llm-embedding}, while the second quality will be verified by extending a trained quality prediction component to an unseen LLM model, and measuring it's accuracy over new comparison pairs.
 
-As specified in requirements, prompt routing will be performed based on predicted response quality and estimated request cost. While LLM pricing rules are usually clear, accurate calculation of the cost before the request is made is not possible due to it's dependence on the LLM behavior and output - among other factors, the number of tokens in returned response. Prediction of this quantity is the third research problem of this project. Machine learning models implemented to predict output token counts will be evaluated based on their accuracy on LLM requests included in \textit{LMArena} dataset. In addition to the exploration of effectiveness of various prediction models, the project will measure the impact of length prediction errors on cost estimation error - as LLM request costs depend on a variety of factors, it's possible that accurate prediction of response token count impacts the estimation to a lower extent. 
+As specified in requirements, prompt routing will be performed based on predicted response quality and estimated request cost. While LLM pricing rules are usually clear, accurate calculation of the cost before the request is made is not possible due to its dependence on the LLM behavior and output - among other factors, the number of tokens in returned response. Prediction of this quantity is the third research problem of this project. Machine learning models implemented to predict output token counts will be evaluated based on their accuracy on LLM requests included in \textit{LMArena} dataset. In addition to the exploration of effectiveness of various prediction models, the project will measure the impact of length prediction errors on cost estimation error - as LLM request costs depend on a variety of factors, it's possible that accurate prediction of response token count impacts the estimation to a lower extent. 
 
 In addition to measuring the performance of parts of the system specified above, effectiveness of the whole system will be verified. This will be achieved using \textit{GAIA} benchmark (described in section \ref{section:solution-analysis}), which evaluates the implementation on a set of multi-step tasks. However, maximizing the accuracy over this benchmark is not the primary goal - it would require experiments in prompt and context engineering, which won't be performed.
 
 \chapter{Description of the System}
 
-The system was implemented as a REST API application, which allows users to create a task, monitor it's state, and receive the result. For simplicity, no UI was implemented - the system can be controlled by manual HTTP requests instead. While implementing a user-friendly interface would be an improvement, it isn't too interesting in the context of the problem, while relative simplicity of implemented operations makes it not required for testing and demonstration purposes.
+The system was implemented as a REST API application, which allows users to create a task, monitor its state, and receive the result. For simplicity, no UI was implemented - the system can be controlled by manual HTTP requests instead. While implementing a user-friendly interface would be an improvement, it isn't too interesting in the context of the problem, while relative simplicity of implemented operations makes it not required for testing and demonstration purposes.
 
-Implementation of the system is available in a \textit{Github} repository: \url{https://github.com/Meeso1/llimit}.
+Implementation of the system is available in a \textit{GitHub} repository: \url{https://github.com/Meeso1/llimit}.
 
 \section{Technology selection}
 
@@ -480,7 +480,7 @@ The system was implemented in \textit{Python} 3.13, using \textit{FastAPI} \cite
 
 \section{API Interface}
 
-In it's essence, the task completion process is very simple from user perspective. The only information that needs to be provided by the user is the task prompt, and files required for task completion. These actions were implemented as two \texttt{POST} endpoints. Supplementary \texttt{GET} endpoints on the same routes make it possible to inspect the state of running and completed tasks, completing the minimal API design required for task execution.
+In its essence, the task completion process is very simple from user perspective. The only information that needs to be provided by the user is the task prompt, and files required for task completion. These actions were implemented as two \texttt{POST} endpoints. Supplementary \texttt{GET} endpoints on the same routes make it possible to inspect the state of running and completed tasks, completing the minimal API design required for task execution.
 
 In practice, a few additional endpoints are required. The following routes were implemented:
 
@@ -550,7 +550,7 @@ The upload is followed by type-specific preprocessing. This step performs requir
 
 As for metadata computation, the most important computed value is token count of text data. Depending on the format, text-based files are either priced as input tokens (i.e. PDFs if text-based processing is selected), or simply included in the prompt (i.e. plain-text or markdown files). This means that knowing the token count of their contents is required for accurate request cost prediction (described in detail in section \ref{section:cost-estimation}).
 
-Computed metadata are appended to user-specified additional metadata. Finally, the file is saved to disk, (encoded as Base64 for security), and metadata is stored in the database.
+Computed metadata are appended to user-specified additional metadata. Finally, the file is saved to disk (encoded as Base64 for security), and metadata is stored in the database.
 
 In addition to actual files, system supports registering file URLs. LLMs generally allow to specify URLs as input in case of images, video, audio, and PDF files, so supporting this format in the system was a natural consequence. URL registration process is analogous to file upload, with exception of metadata computation. In this case, as file contents aren't available, data required for cost estimation is expected to be provided by the user in additional metadata.
 
@@ -577,7 +577,7 @@ Step completion is implemented using a work item queue, with state saved in the 
 
 \subsubsection{SSE}
 
-HTTP communication is asymmetric by design - it always starts with a request from the client, which the server handles, returning a response. This property makes dealing with long-running asynchronous processes inconvenient - the only way for the client to wait for an operation to complete is to use a pooling loop, checking the state every so often. This problem can be quite easily solved by implementing a non-HTTP notification mechanism (i.e. WebSockets \cite{fette2011websocket}). However, a simpler solution exists: Server-Sent Events \cite{w3c2015sse}. SSE stream utilizes HTTP for server-sent notifications, by simply keeping the HTTP connection open, writing each event data as a JSON line. While not aligning with HTTP design, this mechanism provides a simple alternative to pooling or using additional connection protocols.
+HTTP communication is asymmetric by design - it always starts with a request from the client, which the server handles, returning a response. This property makes dealing with long-running asynchronous processes inconvenient - the only way for the client to wait for an operation to complete is to use a polling loop, checking the state every so often. This problem can be quite easily solved by implementing a non-HTTP notification mechanism (i.e. WebSockets \cite{fette2011websocket}). However, a simpler solution exists: Server-Sent Events \cite{w3c2015sse}. SSE stream utilizes HTTP for server-sent notifications, by simply keeping the HTTP connection open, writing each event data as a JSON line. While not aligning with HTTP design, this mechanism provides a simple alternative to pooling or using additional connection protocols.
 
 The system exposes an SSE endpoint at \texttt{/sse/events}. Events are produced when task state is updated in any way (step is completed, step list is generated, task finishes, etc.). Additionally, metadata filtering is implemented, making it possible to request only a certain subset of emitted events - for example, only those related to a particular task.
 
@@ -595,7 +595,7 @@ Each step requires different LLM capabilities and input modalities to be complet
 
 Ensuring that chosen LLM satisfies input modality and capability constraints is done by simply filtering the list of available models based on their metadata. If no model satisfies these constraints, step is failed with a descriptive reason, and reevaluation is triggered.
 
-The choice of utility function defines the behavior of the system. For example, higher emphasis on predicted quality score will cause the system to favor LLMs which receive higher scores, regardless of estimated cost. Despite it's importance, there is no obvious criterion that can be used to determine it's quality. Fundamentally, quantities that the utility function balances aren't comparable. While it would be possible to construct some arbitrary metric and find an utility function that is the best according to that metric, there's no good reason to consider such process to be better than specifying chosen utility function directly - in principle, for any utility function it would be possible to choose such a fitness metric that chosen utility function fits the constraint the best.
+The choice of utility function defines the behavior of the system. For example, higher emphasis on predicted quality score will cause the system to favor LLMs which receive higher scores, regardless of estimated cost. Despite its importance, there is no obvious criterion that can be used to determine its quality. Fundamentally, quantities that the utility function balances aren't comparable. While it would be possible to construct some arbitrary metric and find an utility function that is the best according to that metric, there's no good reason to consider such process to be better than specifying chosen utility function directly - in principle, for any utility function it would be possible to choose such a fitness metric that chosen utility function fits the constraint the best.
 
 Due to aforementioned reason, utility function was chosen explicitly. In practice, while the choice is important, it does not impact the implementation and design of other parts of the system - if necessary, changing utility function is extremely simple.
 
@@ -677,29 +677,29 @@ Requirements described in section \ref{section:requirements} state that the syst
 
 Prediction of expected quality of the response that chosen LLM would return, given a certain prompt, is the main research aspect of this work. As described in section \ref{section:llm-selection}, predicted LLM scores, along with estimated request cost, are used to determine which LLM should be utilized while completing a step. 
 
-Implementation of all models described in this section, along with performed experiments, can be found in a \textit{Github} repository: \url{https://github.com/Meeso1/llimit-model-selection}.
+Implementation of all models described in this section, along with performed experiments, can be found in a \textit{GitHub} repository: \url{https://github.com/Meeso1/llimit-model-selection}.
 
 \section{Dataset Selection}
 \label{section:dataset-selection}
 
-The title of the most popular human-evaluated LLM preference dataset without a doubt belongs to \textit{Chatbot Arena Conversations}, introduced by L.~Zheng et. al. in \textit{MT-Bench} paper \cite{zheng2023mtbench}. It is often used as the primary human-evaluated dataset in works researching prompt routing methods, like \textit{RouteLLM} paper \cite{ong2025routellm}, described in section \ref{section:routellm}.
+The title of the most popular human-evaluated LLM preference dataset without a doubt belongs to \textit{Chatbot Arena Conversations}, introduced by L.~Zheng et al. in \textit{MT-Bench} paper \cite{zheng2023mtbench}. It is often used as the primary human-evaluated dataset in works researching prompt routing methods, like \textit{RouteLLM} paper \cite{ong2025routellm}, described in section \ref{section:routellm}.
 
 \textit{Chatbot Arena Conversations} data consists of a pair of responses from different LLM models to a single user prompt, along with a comparison label, determining which model's answer is considered better by the user. When comparison is unclear, the label can also indicate that both responses were sufficient for a given query, or that neither model managed to produce a good answer. Selection of LLMs is sufficiently wide for a model to learn a broad spectrum of differences between different LLM models, while prompts span a variety of topics. 
 
-However, there is a crucial issue: published in 2023, \textit{Chatbot Arena Conversations} dataset only includes comparisons between rather old LLM models. This isn't a disqualifying problem, as my work doesn't focus on particular LLM models. Though, A decision to use this dataset would require two important implications: that human preference during evaluation of a pair of responses remains unchanged, and that the general distribution of responses produced by LLMs is similar.
+However, there is a crucial issue: published in 2023, \textit{Chatbot Arena Conversations} dataset only includes comparisons between rather old LLM models. This isn't a disqualifying problem, as the work doesn't focus on particular LLM models. Though, a decision to use this dataset would require two important implications: that human preference during evaluation of a pair of responses remains unchanged, and that the general distribution of responses produced by LLMs is similar.
 
 It's hard to evaluate how close to the truth the first assumption is. While human preferences likely did not change drastically over the last four years, expectations of what LLMs should be able to do did undergo an undeniable change, simply due to their capabilities increasing. Another significant difference may be caused by a wider adoption - people whose responses were used in \textit{Chatbot Arena Conversations} dataset belonged to a significantly narrower group of "early adopters" of LLM technology, compared to a group of LLM users today.
 
-These reasons prompted me to decide to rely on a newer alternative to \textit{Chatbot Arena Conversations} dataset. Collected and released by the same organization (\textit{LMSYS}), \textit{LMArena Human Preference} \cite{lmsys2024lmarena} is a successor of aforementioned dataset. It's structure closely resembled \textit{Chatbot Arena Conversations}, also including human comparison results over a pair of LLM responses to the same prompt. \textit{LMArena Human Preference} is also an improvement in terms of size. It contains around 140 thousand comparison pairs (compared to \textit{Chatbot Arena Conversations}'s 33 thousand), and includes responses from 53 different models (compared to \textit{Chatbot Arena Conversations}'s 20).
+These reasons prompted a decision to rely on a newer alternative to \textit{Chatbot Arena Conversations} dataset. Collected and released by the same organization (\textit{LMSYS}), \textit{LMArena Human Preference} \cite{lmsys2024lmarena} is a successor of aforementioned dataset. It's structure closely resembled \textit{Chatbot Arena Conversations}, also including human comparison results over a pair of LLM responses to the same prompt. \textit{LMArena Human Preference} is also an improvement in terms of size. It contains around 140 thousand comparison pairs (compared to \textit{Chatbot Arena Conversations}'s 33 thousand), and includes responses from 53 different models (compared to \textit{Chatbot Arena Conversations}'s 20).
 
 It's important to note that due to a very similar structure, these datasets can be used interchangeably. Due to previously mentioned reasons, mainly \textit{LMArena Human Preference} was used for model training and evaluation throughout this work. However, comparisons between datasets are made where relevant, highlighting important differences between their data.
 
 \section{Preprocessing \& Feature Selection}
 \label{section:preprocessing-and-features}
 
-Intuitively, when it comes to inferring the quality of LLM's response to a given input, the most important aspect of that prompt should be it's semantic meaning - ideally, prompts that are equivalent when it comes to meaning, differing only in wording, should produce the same answer. Semantic meaning of a given text can be captured via a range of specialized text embedding models, which, given an input, return a vector that should be useful for a range of classification or regression tasks. As such, prompt embedding vectors are the primary candidate for model input features. Computation of embedding vectors was implemented using \texttt{sentence-transformers} Python library \cite{reimers2019sentencetransformers}, which offers a wide range of embedding models through an unified interface.
+Intuitively, when it comes to inferring the quality of LLM's response to a given input, the most important aspect of that prompt should be its semantic meaning - ideally, prompts that are equivalent when it comes to meaning, differing only in wording, should produce the same answer. Semantic meaning of a given text can be captured via a range of specialized text embedding models, which, given an input, return a vector that should be useful for a range of classification or regression tasks. As such, prompt embedding vectors are the primary candidate for model input features. Computation of embedding vectors was implemented using \texttt{sentence-transformers} Python library \cite{reimers2019sentencetransformers}, which offers a wide range of embedding models through an unified interface.
 
-In practice, assumption that prompt features which are unrelated to it's meaning shouldn't influence LLM output isn't reasonable. LLMs in they current state are far from ideal, so certain biases and simple relationships cannot be ruled out. Thus, instead of relying solely on prompt embedding vectors, input features also contain a set of supporting values that represent certain characteristics of submitted question.
+In practice, assumption that prompt features which are unrelated to its meaning shouldn't influence LLM output isn't reasonable. LLMs in their current state are far from ideal, so certain biases and simple relationships cannot be ruled out. Thus, instead of relying solely on prompt embedding vectors, input features also contain a set of supporting values that represent certain characteristics of submitted question.
 
 Aside from prompt embedding vectors, the following scalar features were used:
 
@@ -720,7 +720,7 @@ Aside from prompt embedding vectors, the following scalar features were used:
 
 Features that don't directly encode prompt length were normalized by that length, in order to reduce dependency between them - for example, it's reasonable to assume that longer prompts will, on average, contain more parentheses and question marks than shorter prompts.
 
-Vocabulary richness ratio was inverted by subtracting it's value from 1. This transformation was performed to make value distribution more similar to other features, which made it possible to unify its further processing with the softplus transformation described in section~\ref{section:preprocessing-and-features}. In an overwhelming majority of samples, nearly all words are different, causing vocabulary richness ratio to primarily take a value of 1 (or close to it). "Inverting" values causes them to instead be 0 (or close to it).
+Vocabulary richness ratio was inverted by subtracting its value from 1. This transformation was performed to make value distribution more similar to other features, which made it possible to unify its further processing with the softplus transformation described in section~\ref{section:preprocessing-and-features}. In an overwhelming majority of samples, nearly all words are different, causing vocabulary richness ratio to primarily take a value of 1 (or close to it). "Inverting" values causes them to instead be 0 (or close to it).
 
 \subsection{Domain Scores}
 
@@ -831,7 +831,7 @@ Distributions of example features before and after transformations are displayed
 
 A natural simplification of prompt routing problem comes from an assumption that LLM performance does not depend on the prompt. In this case, every LLM has a single score associated with them, and the problem reduces to assigning those scores based on comparison data. While this simplification makes the problem much less interesting and complex, it is more commonly used when ranking LLMs, due to capturing a general LLM quality rather than focusing on particular cases \cite{zheng2023mtbench, ong2025routellm}. Also, exploration of this problem will serve as a good baseline for prompt-aware scoring.
 
-The problem of scoring entries based on comparison data can be expressed more rigorously, turning it into an optimization problem with well-defined fitness metric. Some such expressions have easily computable optimal solution.
+The problem of scoring entries based on comparison data can be expressed more rigorously, turning it into an optimization problem with a well-defined fitness metric. Some such expressions have easily computable optimal solution.
 
 \subsection{L1 Criterion}
 
@@ -848,11 +848,11 @@ This criterion can be equivalently formulated via a min-cost-max-flow problem.
 \begin{enumerate}
     \item Each node (except source and sink) represents an entry;
     \item A comparison in which A wins against B is expressed as an edge from node A to node B, of capacity 1 and cost 1;
-    \item There's an edge from source to each node, with cost 0 and capacity equal to it's number of wins;
-    \item There's an edge from each node to sink, with cost 0 and capacity equal to it's number of losses.
+    \item There's an edge from source to each node, with cost 0 and capacity equal to its number of wins;
+    \item There's an edge from each node to sink, with cost 0 and capacity equal to its number of losses.
 \end{enumerate}
 
-Then, node potentials can be interpreted entry scores.
+Then, node potentials can be interpreted as entry scores.
 
 The solution to min-cost-max-flow problem also gives us an additional useful metric: percentage of "meaningful" comparisons in the comparison set. Any cycle in the network has positive cost (since all edges that don't include source and sink have positive cost), so optimal flow won't use them. Using that information, we can compute the ratio of used comparison edges (equal to total cost) to all comparisons. This quantity can be interpreted as decisiveness of comparison set - since comparison cycles can't be scored correctly, the more common they are, the less correct is it to represent LLM quality via a single, prompt-independent score.
 
@@ -905,7 +905,7 @@ Minimizing squares of upset magnitudes turns out to be even simpler than minimiz
     \label{table:l2-model-results}
 \end{table}
 
-The model achieves significantly better results than min-cost-max-flow approach. As such, it's accuracy will be used as baseline for other models. A $12 \%$ gap in validation accuracy between datasets is noteworthy, confirming the distinction highlighted by L1 criterion results - \textit{LMArena} dataset is less "decisive", with a significantly bigger fraction of comparisons not explainable just by model identity.
+The model achieves significantly better results than min-cost-max-flow approach. As such, its accuracy will be used as baseline for other models. A $12 \%$ gap in validation accuracy between datasets is noteworthy, confirming the distinction highlighted by L1 criterion results - \textit{LMArena} dataset is less "decisive", with a significantly bigger fraction of comparisons not explainable just by model identity.
 
 \section{LLM Embedding}
 \label{section:llm-embedding}
@@ -914,7 +914,7 @@ LLM ecosystem is constantly evolving, with new models being introduced often. Wh
 
 An extensible alternative to scoring only LLMs whose comparison data is available, is to compute an embedding vector representing each model, and use that instead of LLM ID as scoring input data. Such embeddings can be computed without relying on comparison data, making the model easily extensible. In particular, embeddings can be computed from a set of prompts and LLM responses to them. This information is much easier to gather than human evaluations, and can be collected automatically. 
 
-An argument can be made that prompts and responses represent all information required for scoring. This way of specifying the problem transforms it into a set embedding problem: given a set of samples, define an embedding function that satisfies some requirements, while being invariant to sample ordering. Many solutions to this problem have been developed and discussed. One such solution is described by Zaheer et. al. in \textit{DeepSets} paper \cite{zaheer2017deep}. It shows that such set embedding function can be defined as a function of a mean of sample embeddings (equation \ref{eq:set-embedding-mean}). $P_{out}$ represents final output transformation, while $E_s$ is a sample embedding function. 
+An argument can be made that prompts and responses represent all information required for scoring. This way of specifying the problem transforms it into a set embedding problem: given a set of samples, define an embedding function that satisfies some requirements, while being invariant to sample ordering. Many solutions to this problem have been developed and discussed. One such solution is described by Zaheer et al. in \textit{DeepSets} paper \cite{zaheer2017deep}. It shows that such set embedding function can be defined as a function of a mean of sample embeddings (equation \ref{eq:set-embedding-mean}). $P_{out}$ represents final output transformation, while $E_s$ is a sample embedding function. 
 
 \begin{equation}
 \label{eq:set-embedding-mean}
@@ -925,7 +925,7 @@ This specification of the problem has an important, additional benefit. Comparis
 
 \subsection{Metrics}
 
-Embeddings will be used by scoring models to distinguish between LLMs, and subsequently be able to determine certain characteristics of their response patterns. This means that the most important quality of LLM embeddings is distinguishability - given a subset of prompt and response pairs form a single LLM, we should be able to tell which LLM it was produced by. 
+Embeddings will be used by scoring models to distinguish between LLMs, and subsequently be able to determine certain characteristics of their response patterns. This means that the most important quality of LLM embeddings is distinguishability - given a subset of prompt and response pairs from a single LLM, we should be able to tell which LLM it was produced by. 
 
 Rigorously, we can define an accuracy metric as shown on equation \ref{equation:embedding-dist-accuracy} - \textit{distinguishability} accuracy. $f$ represents an embedding operation, $T_i$ - a small subset of entries from model $m_i$, and $S_m$ - set of all samples from model $m$. The accuracy measures the percentage of cases in which an embedding computed from a small subset of samples from a given LLM are the closest to this LLM's embedding vector computed from all samples. 
 
@@ -947,7 +947,7 @@ In addition to distinguishability accuracy, two other, simpler metrics were intr
     \Omega &= \{(a, p, n) : m_a = m_p,\; m_a \neq m_n\}
 \end{align}
 
-In practice, triplet and nearest neighbor accuracies turned out to not be useful due to narrow value ranges. Triplet accuracy typically reaches $100 \%$ within the first few epochs as samples start to cluster, providing no further information. On the other hand, nearest neighbor accuracy stays small due to high dimensionality of embedding space, improving marginally over the training period. 
+In practice, triplet and nearest neighbor accuracies turned out to not be useful due to narrow value ranges. Triplet accuracy typically reaches $100 \%$ within the first few epochs as samples start to cluster, providing no further information. On the other hand, nearest neighbor accuracy stays small due to the high dimensionality of embedding space, improving marginally over the training period. 
 
 \subsection{Features}
 \label{section:llm-embedding-features}
@@ -1013,7 +1013,7 @@ Model was trained using triplet margin loss \cite{schroff2015facenet}, given by 
     \Omega &= \{(a, p, n) : m_a = m_p,\; m_a \neq m_n\}
 \end{align}
 
-Additionally, KL loss \cite{kingma2014vae} was introduced to encourage a sample embeddings to follow a normal distribution.
+Additionally, KL loss \cite{kingma2014vae} was introduced to encourage sample embeddings to follow a normal distribution.
 
 \subsubsection{Results}
 
@@ -1064,9 +1064,9 @@ The model's performance is similar to the previous approach. On \textit{LMArena}
 \end{figure}
 
 \subsection{Attention Embedding}
-\ref{section:attention-embedding}
+\label{section:attention-embedding}
 
-Set embedding problem is quite common in machine learning, and as such, a number of solutions were proposed over the years. The general idea presented in the preamble of section \ref{section:llm-embedding}, defining LLM embedding as a mean of embeddings of their outputs, is loosely inspired by Zaheer et. al. \textit{DeepSets} paper \cite{zaheer2017deep}. While well received and widely cited, alternatives and extending works exist. One such work is Lee et. al. \textit{Set Transformer} paper \cite{lee2019set}. It challenges an implicit assumption that importance of all set elements is equal. The paper proposes a relatively simple alternative to taking a mean of sample representations - attention mechanism. The rationale behind that change is that certain samples provide a much clearer information about the set than others - capturing behaviors or characteristics that highlight differences between a given set and the rest.
+Set embedding problem is quite common in machine learning, and as such, a number of solutions were proposed over the years. The general idea presented in the preamble of section \ref{section:llm-embedding}, defining LLM embedding as a mean of embeddings of their outputs, is loosely inspired by Zaheer et al. \textit{DeepSets} paper \cite{zaheer2017deep}. While well received and widely cited, alternatives and extending works exist. One such work is Lee et al. \textit{Set Transformer} paper \cite{lee2019set}. It challenges an implicit assumption that importance of all set elements is equal. The paper proposes a relatively simple alternative to taking a mean of sample representations - attention mechanism. The rationale behind that change is that certain samples provide a much clearer information about the set than others - capturing behaviors or characteristics that highlight differences between a given set and the rest.
 
 Attention embedding model implements that idea. The model consists of two modules: pair encoder (illustrated by figure \ref{fig:attention-embedding-pair-encoder}) and set aggregator (shown on figure \ref{fig:attention-embedding-set-embedding}). Pair encoder takes prompt and response embeddings together with scalar features as inputs, projects each into a vector of configurable dimensionality, enriches these projections with interaction features (difference between prompt and response embeddings, and their element-wise product), then runs these features through a multi-layer perceptron to produce an embedding vector.
 
@@ -1180,7 +1180,7 @@ The score assignment goal that the network tries to achieve does not inherently 
 
 \subsubsection{\textit{AdamW}}
 
-\textit{AdamW} optimizer was used during training process. Described by Loshchilov et. al. in \textit{Decoupled Weight Decay Regularization} paper \cite{loshchilov2019adamw}, it improves the previous \textit{Adam} algorithm (Kingma et. al., \textit{Adam: A Method for Stochastic Optimization} \cite{kingma2015adam}) by decoupling weight decay from gradient update step. In \textit{Adam}, L2 regularization is essentially implemented by altering the effective loss criterion which is being minimized. \textit{AdamW} implements weight decay during weight update step instead, as described by equation \ref{equation:adamw-weight-update}. 
+\textit{AdamW} optimizer was used during training process. Described by Loshchilov et al. in \textit{Decoupled Weight Decay Regularization} paper \cite{loshchilov2019adamw}, it improves the previous \textit{Adam} algorithm (Kingma et al., \textit{Adam: A Method for Stochastic Optimization} \cite{kingma2015adam}) by decoupling weight decay from gradient update step. In \textit{Adam}, L2 regularization is essentially implemented by altering the effective loss criterion which is being minimized. \textit{AdamW} implements weight decay during weight update step instead, as described by equation \ref{equation:adamw-weight-update}. 
 
 \begin{equation}
 \label{equation:adamw-weight-update}
@@ -1189,7 +1189,7 @@ The score assignment goal that the network tries to achieve does not inherently 
 
 \subsubsection{Residual Connections}
 
-As depth of a dense neural network increases, a problem of vanishing gradient arises \cite{he2016deep}. Gradient of early layer weights is a product of activation function gradients and weight values of later layers. Due to regularization and similar mechanisms, these values tend to be smaller than 1 on average, causing gradual decrease in gradient magnitude. To mitigate this issue, residual connections were introduced. Initially described by He et. al. in \textit{Deep Residual Learning for Image Recognition} paper \cite{he2016deep}, residual connections introduce a "skip-path" for each layer. Mathematically, this means that layer input is added to layer output. The modification ensures that early layers have a direct path to network output. As vector addition can only be performed if vectors have the same dimensionality, the implementation of skip connections that relies on adding layer input to output can only be performed for layers that have the same input and output dimension. The mechanism can be easily extended to layers where these dimensions are not equal, though, by introducing a linear projection layer with the same input and output dimensions as the "primary" layer, but without activation functions, normalization layers, and so on. This extension is also described in \textit{Deep Residual Learning for Image Recognition} paper \cite{he2016deep}, in the context of skip connections between CNN layers with different channel counts. The idea can be justified by the fact that application of multiple linear transformations is equivalent to a single linear transformation. In other words, an arbitrary early layer of the network can influence the output through a single linear transformation, which means it receives a clear gradient signal. 
+As depth of a dense neural network increases, a problem of vanishing gradient arises \cite{he2016deep}. Gradient of early layer weights is a product of activation function gradients and weight values of later layers. Due to regularization and similar mechanisms, these values tend to be smaller than 1 on average, causing gradual decrease in gradient magnitude. To mitigate this issue, residual connections were introduced. Initially described by He et al. in \textit{Deep Residual Learning for Image Recognition} paper \cite{he2016deep}, residual connections introduce a "skip-path" for each layer. Mathematically, this means that layer input is added to layer output. The modification ensures that early layers have a direct path to network output. As vector addition can only be performed if vectors have the same dimensionality, the implementation of skip connections that relies on adding layer input to output can only be performed for layers that have the same input and output dimension. The mechanism can be easily extended to layers where these dimensions are not equal, though, by introducing a linear projection layer with the same input and output dimensions as the "primary" layer, but without activation functions, normalization layers, and so on. This extension is also described in \textit{Deep Residual Learning for Image Recognition} paper \cite{he2016deep}, in the context of skip connections between CNN layers with different channel counts. The idea can be justified by the fact that application of multiple linear transformations is equivalent to a single linear transformation. In other words, an arbitrary early layer of the network can influence the output through a single linear transformation, which means it receives a clear gradient signal. 
 
 \subsubsection{Loss Functions}
 
@@ -1205,26 +1205,26 @@ Two interchangeable loss functions were implemented: margin ranking loss (define
     \mathcal{L}_\text{cross-entropy}(s_a, s_b, y) = \frac{1}{n}\sum_{i=1}^{n} \text{BCE}\left(\sigma(s_{a,i}-s_{b,i}), \frac{y_i+1}{2}\right)
 \end{equation}
 
-Initially, margin ranking loss seemed more favorable - once scores assigned to a given training pair satisfy the comparison with a margin, the pair has no contribution to loss gradients, and therefore model is not encouraged to widen the score gap. Intuitively, this is a desired behavior. Assigning a widely different scores to compared samples is by no means better than keeping their difference small. However, margin ranking loss turned out to under-perform significantly in practice. This observation motivated the implementation of an alternative.
+Initially, margin ranking loss seemed more favorable - once scores assigned to a given training pair satisfy the comparison with a margin, the pair has no contribution to loss gradients, and therefore the model is not encouraged to widen the score gap. Intuitively, this is a desired behavior. Assigning a widely different scores to compared samples is by no means better than keeping their difference small. However, margin ranking loss turned out to under-perform significantly in practice. This observation motivated the implementation of an alternative.
 
 \subsubsection{Checkpointing}
 
-Iterative machine learning models, given sufficiently long training time (or sufficiently high epoch count), often overfit to training data. As the objective which the model minimizes is computed over a set list of training samples, models with sufficiently high parameter counts eventually start learning patterns that randomly occur in data, and don't generalize to validation sample set. This is observed as model performance improvement over training data, while it's validation performance begins to decrease.
+Iterative machine learning models, given sufficiently long training time (or sufficiently high epoch count), often overfit to training data. As the objective which the model minimizes is computed over a set list of training samples, models with sufficiently high parameter counts eventually start learning patterns that randomly occur in data, and don't generalize to validation sample set. This is observed as model performance improvement over training data, while its validation performance begins to decrease.
 
-To address this problem, a simple checkpointing mechanism was introduced. Every epoch, validation accuracy is computed, and if it's value is bigger than previously recorded, current model state is saved. When training completes, model is reverted to it's best recorded state. This means that longer training process can never have a negative effect on model quality - if the model starts to overfit to training data, or hits a plateau, it will be reverted to previous, better state.
+To address this problem, a simple checkpointing mechanism was introduced. Every epoch, validation accuracy is computed, and if its value is bigger than previously recorded, current model state is saved. When training completes, model is reverted to its best recorded state. This means that longer training process can never have a negative effect on model quality - if the model starts to overfit to training data, or hits a plateau, it will be reverted to previous, better state.
 
-Due to it's usefulness, this system was implemented in all iterative models.
+Due to its usefulness, this system was implemented in all iterative models.
 
 \subsubsection{Metrics}
 \label{section:dnn-model-metrics}
 
 Training process of every machine learning model can be monitored by following two primary metrics: loss function values, which the model is trained to minimize, and accuracy values, which, assuming good design of loss criterion, should increase as loss values decrease. Recording these values after every training epoch for both training and validation sets provides a way to verify if the model is learning correctly, overfits, stagnates, etc.
 
-Although undeniably useful, accuracy and loss values alone are not enough to interpret the behavior of the model and to diagnose it's flaws. A set of additional diagnostic metrics was introduced to help with that. They were chosen specifically to provide information about internal network behavior. The following metrics were defined:
+Although undeniably useful, accuracy and loss values alone are not enough to interpret the behavior of the model and to diagnose its flaws. A set of additional diagnostic metrics was introduced to help with that. They were chosen specifically to provide information about internal network behavior. The following metrics were defined:
 
 \begin{itemize}
     \item \textbf{Projection variance and norm} \\
-    Variance and L2 norm of projected values of each input component (outputs of their projection layers) are tracked. Low variance of component projections signifies it's low impact on model output - the network essentially learned to ignore any information that could be contained in that input component. Additionally, relative magnitude of projection norms can provide information about relative impact of different input components on network output. 
+    Variance and L2 norm of projected values of each input component (outputs of their projection layers) are tracked. Low variance of component projections signifies its low impact on model output - the network essentially learned to ignore any information that could be contained in that input component. Additionally, relative magnitude of projection norms can provide information about relative impact of different input components on network output. 
     \item \textbf{Score variance decomposition} \\
     Variance of assigned scores is decomposed into LLM-specific and prompt-specific components. Decomposition can be described by equation \ref{equation:variance-decomposition} - $s$ represents assigned scores, $\overline{s}_m$ - mean scores of LLMs, and $\Delta s$ - deviations of assigned scores from the average LLM score. If nearly all variance in returned scores can be attributed to LLM differences (or, more specifically, to LLM embeddings), we can conclude that prompt information is essentially ignored. \\
     \begin{equation}
@@ -1285,7 +1285,7 @@ In both cases, improvement is marginal. Over the first 30 training epochs, train
 
 Gradient boosting models are a common first choice when developing a machine learning solution for regression and classification problems. They are usually quick to learn various simple and intermediate patterns from the data. Additionally, their structure makes them relatively interpretable (especially in comparison to various neural network-based models) - as gradient boosting model is simply an ensemble of decision trees, nodes of these trees can be analyzed to find certain patterns about input to output relationships.
 
-Instead of implementing a separate, prompt-aware gradient boosting model, implementation described in section \ref{section:prompt-invariant-embedding-based-models} was extended, making input data used for scoring configurable. Based on configuration, in addition to LLM embeddings model can rely on prompt embedding vectors, as well as scalar prompt features.
+Instead of implementing a separate, prompt-aware gradient boosting model, the implementation described in section \ref{section:prompt-invariant-embedding-based-models} was extended, making input data used for scoring configurable. Based on configuration, in addition to LLM embeddings model can rely on prompt embedding vectors, as well as scalar prompt features.
 
 To match the interface of other models described in this section, whose training process is based on epochs, the implementation of gradient boosting algorithm does not rely on a explicitly set number of boosting iterations - contrary to the interface offered by, for example, \texttt{XGBoost} package. This dynamic approach makes it possible to perform validations and checkpointing between epochs.
 
@@ -1298,7 +1298,7 @@ To monitor learning process of the gradient boosting model, the following metric
     \item \textbf{Standard deviation of predictions} \\
     As the number of decision trees in gradient boosting model increases, the model should be able to distinguish between more samples, returning more diversified outputs. Each appended regressor represents a new set of prediction rules, composed with a goal of distinguishing between a subset of samples, such that each group can be assigned a more accurate output value. This process implies that standard deviation of output values should increase during fitting, approaching a constant when training stalls.
     \item \textbf{Mean new tree contribution} \\
-    New decision trees are appended to the gradient boosting ensemble with the goal of changing it's prediction in a certain way. The magnitude of this change can be tracked - it's value is given by equation \ref{equation:scoring-gb-new-tree-contribution}. Recorded values of this measure are expected to decrease to zero during training process, as the model learns details of lower and lower importance. 
+    New decision trees are appended to the gradient boosting ensemble with the goal of changing its prediction in a certain way. The magnitude of this change can be tracked - its value is given by equation \ref{equation:scoring-gb-new-tree-contribution}. Recorded values of this measure are expected to decrease to zero during training process, as the model learns details of lower and lower importance. 
     \begin{equation}
     \label{equation:scoring-gb-new-tree-contribution}
         \operatorname{C}_t = \operatorname{mean}(\vert \hat{y}_i^{(t)} - \hat{y}_i^{(t-1)} \vert)
@@ -1317,9 +1317,9 @@ To monitor learning process of the gradient boosting model, the following metric
 
 Training results on each dataset are presented on figures \ref{figure:gradient-boosting-scoring-results-lmarena} and \ref{figure:gradient-boosting-scoring-results-chatbot-arena}. 
 
-Both sets of plots look very similar. Training loss behaves similarly to validation loss initially. After a relatively small number of epochs, the rapid loss decrease slows down, with validation loss converging to a certain minimum level, and training loss maintaining a slower downward trend. Feature block importance plot shows that, in both cases, model initially relies on LLM embeddings, whose influence diminishes in favor of prompt embeddings over training duration. Scalar prompt features are ignored by the model in both cases. Standard deviation of predictions rises steadily in both cases, while tree contributions gradually get smaller.
+Both sets of plots look very similar. Training loss behaves similarly to validation loss initially. After a relatively small number of epochs, the rapid loss decrease slows down, with validation loss converging to a certain minimum level, and training loss maintaining a slower downward trend. Feature block importance plot shows that, in both cases, the model initially relies on LLM embeddings, whose influence diminishes in favor of prompt embeddings over training duration. Scalar prompt features are ignored by the model in both cases. Standard deviation of predictions rises steadily in both cases, while tree contributions gradually get smaller.
 
-Despite these similarities, model performance over each dataset is quite different. In case of \textit{Chatbot Arena}, validation accuracy is rising over the training period, albeit significantly slower than training accuracy. Best recorded validation accuracy of $75.27 \%$ is achieved after 66 training epochs. \textit{LMArena} model does not exhibit the same behavior. While the best validation accuracy of $62.38 \%$ is recorded after a similar number of epochs, it's values don't change nearly as much, and the improvement can be attributed to chance. It seems that the relationship between prompt embedding vectors and assigned score, that the model learns over the training duration, partially generalizes to validation set in case of \textit{Chatbot Arena}. This generalization does not exist in \textit{LMArena} dataset.
+Despite these similarities, model performance over each dataset is quite different. In case of \textit{Chatbot Arena}, validation accuracy is rising over the training period, albeit significantly slower than training accuracy. Best recorded validation accuracy of $75.27 \%$ is achieved after 66 training epochs. \textit{LMArena} model does not exhibit the same behavior. While the best validation accuracy of $62.38 \%$ is recorded after a similar number of epochs, its values don't change nearly as much, and the improvement can be attributed to chance. It seems that the relationship between prompt embedding vectors and assigned score, that the model learns over the training duration, partially generalizes to validation set in case of \textit{Chatbot Arena}. This generalization does not exist in \textit{LMArena} dataset.
 
 \begin{figure}[!h]
     \centering
@@ -1339,7 +1339,7 @@ Despite these similarities, model performance over each dataset is quite differe
 
 \subsection{Transformer Model}
 
-Sentence encoding transformers are a useful tool that transform text into a fixed-dimensional vector encoding it's meaning, hopefully in a way that's useful for subsequent machine learning tasks. The main input data of the scoring task is the prompt for which an LLM needs to be selected, and as such pretrained sentence transformers seem like a good candidate for the main, trainable part of the scoring model.
+Sentence encoding transformers are a useful tool that transform text into a fixed-dimensional vector encoding its meaning, hopefully in a way that's useful for subsequent machine learning tasks. The main input data of the scoring task is the prompt for which an LLM needs to be selected, and as such pretrained sentence transformers seem like a good candidate for the main, trainable part of the scoring model.
 
 The core of the transformer model is a pretrained sentence transformer model, which is being fine-tuned during the training process. The output of the transformer model is passed to a scoring head, which consists of a small (configurable) number of dense layers, using \textit{LeakyReLU} activation functions (with negative slope equal to $0.1$) and dropout layers. Scoring head module also takes LLM embeddings and scalar prompt features as inputs (since, naturally, sentence transformer module only takes text as input). These input vectors are initially passed through projection layers, similarly to what is described in \ref{section:dnn-model}.
 
@@ -1351,7 +1351,7 @@ The same loss functions were implemented as in previously described models (in s
 \label{section:transformer-embedding-fine-tuning}
 
 % TODO(maybe): something more
-A number of fine-tuning methods were implemented. Initially, the easiest approach involved simply unfreezing $n$ final layers of the model. This turned out to produce terrible results, while also not reducing the number of trainable parameters enough. \textit{LoRA} and \textit{QLoRA} methods were implemented as alternatives. The main idea behind \textit{LoRA} (or \textit{Low Rank Adaptation}), described by Hu et. al. in \textit{LoRA: Low-Rank Adaptation of Large Language Models} paper \cite{hu2022lora}, is the introduction of a smaller number of new, trainable parameters, while keeping original model weights frozen. Effective, altered model weights are computed according to equation \ref{eq:lora}, where $r$ is a configurable rank of the transformation.
+A number of fine-tuning methods were implemented. Initially, the easiest approach involved simply unfreezing $n$ final layers of the model. This turned out to produce terrible results, while also not reducing the number of trainable parameters enough. \textit{LoRA} and \textit{QLoRA} methods were implemented as alternatives. The main idea behind \textit{LoRA} (or \textit{Low Rank Adaptation}), described by Hu et al. in \textit{LoRA: Low-Rank Adaptation of Large Language Models} paper \cite{hu2022lora}, is the introduction of a smaller number of new, trainable parameters, while keeping original model weights frozen. Effective, altered model weights are computed according to equation \ref{eq:lora}, where $r$ is a configurable rank of the transformation.
 
 \begin{align}
 \label{eq:lora}
@@ -1373,7 +1373,7 @@ A number of fine-tuning methods were implemented. Initially, the easiest approac
 
 \subsubsection{Interaction Features}
 
-The model is designed to learn most information required for score prediction through fine-tuning. This decision dictates the small size of scoring head module - it's only purpose is to combine LLM embedding vectors (and scalar prompt features, if they turn out to be useful) with prompt embeddings. However, this introduces certain risks. The "path length", or, more formally, number of operations, between prompt text and output is significantly bigger than between other inputs and output. This may cause the model to initially take the path of least resistance, focusing only on LLM embeddings (essentially learning optimal prompt-invariant score for each vector), and discarding prompt embeddings entirely, essentially blocking gradient flow to the transformer module.
+The model is designed to learn most information required for score prediction through fine-tuning. This decision dictates the small size of scoring head module - its only purpose is to combine LLM embedding vectors (and scalar prompt features, if they turn out to be useful) with prompt embeddings. However, this introduces certain risks. The "path length", or, more formally, number of operations, between prompt text and output is significantly bigger than between other inputs and output. This may cause the model to initially take the path of least resistance, focusing only on LLM embeddings (essentially learning optimal prompt-invariant score for each vector), and discarding prompt embeddings entirely, essentially blocking gradient flow to the transformer module.
 
 To address this issue, simple concatenation of projections of scoring head input vectors was replaced by another combining operation. The goal is to discourage the model from learning scores that depend only on LLM embeddings, and instead encourage it to produce scores based on certain interactions between prompt representation and LLM embedding. To encode that interaction, scalar product was used. Scoring head module takes as input the scalar product of LLM embedding projection, and concatenated prompt embedding and scalar prompt features projections. As scalar product requires arguments to be of the same dimensionality, projection layer sizes were adjusted. Size of scalar features projection is configurable, with prompt embedding projection being twice as big, and LLM embedding projection - three times as big.
 
@@ -1392,7 +1392,7 @@ Additionally, a new metric was introduced: module gradient norms. While dense ne
 
 \subsubsection{\textit{Muon} optimizer}
 
-Instead of \textit{AdamW} optimizer, which was used for dense network model training, transformer model uses \textit{Muon} optimizer. Introduced by Jordan et. al. in an article titled \textit{Muon: An Optimizer for Hidden Layers in Neural Networks} \cite{jordan2024muon}, and later evaluated in context of LLM training by Liu et. al. in \textit{Muon is Scalable for LLM Training} paper \cite{liu2025muonscalable}, \textit{Muon} changes how momentum influences weight updates. While \textit{AdamW} only uses element-wise operations to update weights, \textit{Muon} exploits the matrix structure of most network parameters.  
+Instead of \textit{AdamW} optimizer, which was used for dense network model training, transformer model uses \textit{Muon} optimizer. Introduced by Jordan et al. in an article titled \textit{Muon: An Optimizer for Hidden Layers in Neural Networks} \cite{jordan2024muon}, and later evaluated in context of LLM training by Liu et al. in \textit{Muon is Scalable for LLM Training} paper \cite{liu2025muonscalable}, \textit{Muon} changes how momentum influences weight updates. While \textit{AdamW} only uses element-wise operations to update weights, \textit{Muon} exploits the matrix structure of most network parameters.  
 
 Algorithm \ref{algorithm:muon} describes weight update process. After gradient is computed and momentum is updated, orthogonalization is performed on the result by computing a polar factor $X = U V^T$, from singular value decomposition $M = (U V^T)(V \Sigma V^T)$. The result $X$ is a semi-orthogonal matrix, which captures the direction of required weight updates while normalizing the magnitude. This step effectively replaces the per-element second moment estimate ($\hat{v}_t$) normalization in \textit{AdamW} algorithm. Additionally, resulting matrix $X$ has all singular values equal to 1, so weight update $O_t$ has a bounded spectral norm regardless of how large the gradient was. This means that orthogonalization acts as implicit regularization.
 
@@ -1449,7 +1449,7 @@ Score variance decomposition and gradient attribution plots show strong reliance
 
 Models described in previous sections have one common characteristic: they do not use LLM responses during training, despite them being available in the dataset. The reason of that is quite obvious - LLM responses are not accessible at inference time. The whole point of assigning scores to LLMs is to be able to decide which will produce the best response, without actually requesting that response. Intuitively, if LLM responses were available, the task should be significantly easier. Assigning scores based only on the prompt and information about chosen LLM internally requires deducing certain response characteristics, based on which scoring can subsequently be performed.
 
-The main idea of response predictive model is to utilize response data as much as possible, without requiring it for inference. This is achieved by dividing the scoring task into two parts, described in previous paragraph. First module, the predictor, is responsible for predicting response representation, given information about the prompt and chosen LLM. Second module, the scorer, is responsible for assigning a score, based only on that representation (without additional information about the LLM). End-to-end process retains the same input/output interface as other models, taking prompt and LLM data as input, and returning a score. However, explicit separation of evaluation steps opens new possibilities for training.
+The main idea of response predictive model is to utilize response data as much as possible, without requiring it for inference. This is achieved by dividing the scoring task into two parts, described in previous paragraph. The first module, the predictor, is responsible for predicting response representation, given information about the prompt and chosen LLM. Second module, the scorer, is responsible for assigning a score, based only on that representation (without additional information about the LLM). End-to-end process retains the same input/output interface as other models, taking prompt and LLM data as input, and returning a score. However, explicit separation of evaluation steps opens new possibilities for training.
 
 Prompt and LLM representations used by response predictive model are the same as in other models. Prompts are represented by text embedding vectors and scalar features, while LLMs are encoded as embedding vectors. As this model also uses LLM responses, they need to be represented somehow. The simplest possibility would be to use a similar representation to what is described in section \ref{section:llm-embedding-features}. This representation might be useful for scoring, however there is no guarantee that it would be possible to predict it from just prompt and LLM data. In general, predicting LLM responses is an extremely hard task - predicting all characteristics of the response would be essentially equivalent of generating the response, requiring parameter counts and training data volumes orders of magnitude larger than what's achievable in this project. So, response representation should be carefully tuned in such a way that it is still useful for the scoring module, while also being predictable by the predictor module.
 
@@ -1462,9 +1462,9 @@ Finding such a representation can be incorporated into the training process. A t
     \label{fig:response-predictive-arch}
 \end{figure}
 
-Importantly, predictor and response encoder operate on different inputs. Response encoder has access only to real LLM response representations, while predictor has no information about them. As responses are not available during inference, response encoder is not used in that case. It's purpose is to help in discovering response representations that can be useful for scoring. Having access to actual responses, finding such embeddings should be much easier.
+Importantly, predictor and response encoder operate on different inputs. Response encoder has access only to real LLM response representations, while predictor has no information about them. As responses are not available during inference, response encoder is not used in that case. Its purpose is to help in discovering response representations that can be useful for scoring. Having access to actual responses, finding such embeddings should be much easier.
 
-Modular structure of response predictive model makes it more interpretable than most other models, which usually function as black-box predictors. Each of the three modules has it's separate role, making it easy to measure the quality with which it performs it's task. In particular, we can decouple prediction errors from representation and scorer errors, by comparing scoring accuracy when response embeddings are predicted, with scoring accuracy using real response embeddings. Similarly, predictor quality can be tracked by measuring common regression metrics, like mean squared error or cosine similarity, and by comparing distributions of real and predicted embeddings - ideally, if predictor and encoder modules find some representation equilibrium, distribution should be similar.
+Modular structure of response predictive model makes it more interpretable than most other models, which usually function as black-box predictors. Each of the three modules has its separate role, making it easy to measure the quality with which it performs its task. In particular, we can decouple prediction errors from representation and scorer errors, by comparing scoring accuracy when response embeddings are predicted, with scoring accuracy using real response embeddings. Similarly, predictor quality can be tracked by measuring common regression metrics, like mean squared error or cosine similarity, and by comparing distributions of real and predicted embeddings - ideally, if predictor and encoder modules find some representation equilibrium, distribution should be similar.
 
 \subsubsection{Loss Function}
 
@@ -1478,7 +1478,7 @@ Six loss components are combined, according to equation \ref{equation:response-p
     + k_\text{anchor} \mathcal{L}_\text{anchor} & + k_\text{consistency} \mathcal{L}_\text{consistency} + k_\text{dist} \mathcal{L}_\text{dist}
 \end{align}
 
-First criterion is ranking loss. Two interchangeable ranking loss options were defined, the same as in previously described models: margin ranking loss (equation\ref{equation:margin-ranking-loss}) and Bradley-Terry sigmoid cross-entropy (equation \ref{equation:cross-entropy-loss}). Loss criterion is computed not only using predictor module flow (where response representations are predicted), but also through encoder flow, using real responses as input.
+First criterion is ranking loss. Two interchangeable ranking loss options were defined, the same as in previously described models: margin ranking loss (equation \ref{equation:margin-ranking-loss}) and Bradley-Terry sigmoid cross-entropy (equation \ref{equation:cross-entropy-loss}). Loss criterion is computed not only using predictor module flow (where response representations are predicted), but also through encoder flow, using real responses as input.
 
 Second criterion encodes prediction accuracy. It encourages predictor module to produce outputs similar to those produced by response encoder. Encoder outputs are treated as constants in this case - gradients are computed only with respect to predictor weights. Third criterion is the same as second, but treating predictor outputs as constants instead. It instructs response encoder module to produce representations that predictor module is able to predict. Three interchangeable variants were defined for this loss component: MSE (equation \ref{equation:mse-loss}), cosine similarity (equation \ref{equation:cosine-similarity-loss}) and Huber L1 criterion (equation \ref{equation:huber-l1-loss}). $\hat{r}$ represents predicted response representations, and $r$ - encoded response representations. The sum in Huber criterion iterates over response vector components. 
 
@@ -1529,7 +1529,7 @@ Last criterion is given by equation \ref{equation:distribution-loss}. It is a su
 
 Response predictive model results are shown on figures \ref{figure:response-predictive-results-lmarena} and \ref{figure:response-predictive-results-chatbot-arena}. Additionally, figures \ref{figure:response-predictive-loss-lmarena} and \ref{figure:response-predictive-loss-chatbot-arena} present loss component changes and related metrics. On \textit{LMArena}, model reaches $62.09 \%$ accuracy after 28 training epochs. On \textit{Chatbot Arena}, $74.98 \%$ is reached after 91 epochs.
 
-Plots tell similar story to previously described approaches. The model is quick to achieve accuracy similar to the prompt-invariant baseline, after which it starts learning patterns which do not generalize to validation set. Monitored metrics don't show any clear cause of this behavior. Gradient magnitudes don't collapse to zero, projection norms decrease in a controlled fashion.
+Plots tell a similar story to previously described approaches. The model is quick to achieve accuracy similar to the prompt-invariant baseline, after which it starts learning patterns which do not generalize to validation set. Monitored metrics don't show any clear cause of this behavior. Gradient magnitudes don't collapse to zero, projection norms decrease in a controlled fashion.
 
 
 \begin{figure}[!h]
@@ -1562,7 +1562,7 @@ Plots tell similar story to previously described approaches. The model is quick 
 
 \subsection{Multistage Models}
 
-Models described in this section are focusing on assigning a score based on prompt and LLM information. While certain metrics were introduced to at least partially interpret their decisions (described in sections \ref{section:dnn-model-metrics} and \ref{equation:scoring-gb-metrics}), but in general this formulation of the task does not imply any interpretability. To help with that, model chaining mechanism was introduced. Taking advantage of the fact that scores learned during training are not constrained in any way, given a trained scoring model as "base", another can be fitted on it's errors, attempting to predict the difference between it's predecessor and the true value. Final scores are defined as the sum of both predictions.
+Models described in this section are focusing on assigning a score based on prompt and LLM information. While certain metrics were introduced to at least partially interpret their decisions (described in sections \ref{section:dnn-model-metrics} and \ref{equation:scoring-gb-metrics}), but in general this formulation of the task does not imply any interpretability. To help with that, model chaining mechanism was introduced. Taking advantage of the fact that scores learned during training are not constrained in any way, given a trained scoring model as "base", another can be fitted on its errors, attempting to predict the difference between its predecessor and the true value. Final scores are defined as the sum of both predictions.
 
 We can describe model chaining via equation \ref{equation:model-chaining}. The main interpretability benefit comes from a possibility of constraining input values passed to each model - $I_k$ for a model given by $Score_k$. By gradually extending the set of input components, impact of introduction of each component is clearly visible as an increase in joint model performance quality. 
 
@@ -1571,9 +1571,9 @@ We can describe model chaining via equation \ref{equation:model-chaining}. The m
     Score(I) = \sum_k Score_k(I_k), \quad \forall_k I_k \subset I
 \end{equation}
 
-In LLM scoring task, multi-stage models can be especially useful when a prompt-invariant model is used as base. As described in section \ref{section:prompt-invariant-scoring}, optimal score assignment based only on chosen LLM is rather simple. By using such model and training a more complex model to predict prompt-specific differences, we clearly separate accuracy and score contributions that use prompt information from base LLM-only "bias".
+In the LLM scoring task, multi-stage models can be especially useful when a prompt-invariant model is used as base. As described in section \ref{section:prompt-invariant-scoring}, optimal score assignment based only on chosen LLM is rather simple. By using such model and training a more complex model to predict prompt-specific differences, we clearly separate accuracy and score contributions that use prompt information from base LLM-only "bias".
 
-An additional advantage of multi-stage approach is faster training. Complex models may take multiple epochs before reaching the optimal prompt-invariant accuracy. If prompt-invariant model is used as base, however, optimal prompt-invariant accuracy is the starting point.
+An additional advantage of multi-stage approach is faster training. Complex models may take multiple epochs before reaching the optimal prompt-invariant accuracy. If a prompt-invariant model is used as a base, however, optimal prompt-invariant accuracy is the starting point.
 
 \subsubsection{Results}
 
@@ -1604,9 +1604,9 @@ While predicting how well different LLM models can handle a given prompt is the 
 
 Response length prediction models use mostly the same input data as scoring models - LLM embeddings, prompt embeddings, and scalar prompt features. Training is done using the same dataset as in case of scoring models training, with LLM comparisons broken down into prompt and response pairs.
 
-The only difference is a possibility of using LLM IDs as input. In case of scoring models, LLM embeddings are necessary to make models extendable to new LLMs without requiring comparison datasets featuring those LLMs - instead, a new embedding vector can be computed based on a set of prompts and responses. In case of response length prediction, comparison data isn't necessary. All required data is already contained in prompt and response set required for LLM embedding computation, and length prediction model can simply be re-trained using all available data. 
+The only difference is a possibility of using LLM IDs as input. In case of scoring models, LLM embeddings are necessary to make models extendable to new LLMs without requiring comparison datasets featuring those LLMs - instead, a new embedding vector can be computed based on a set of prompts and responses. In case of response length prediction, comparison data isn't necessary. All required data is already contained in the prompt and response set required for LLM embedding computation, and length prediction model can simply be re-trained using all available data. 
 
-While presence of LLM IDs in input data does make LLM embeddings redundant, it was decided to include them in input data. LLM embedding vectors encode information necessary for distinguishing LLM models, derived from their responses - it is likely that this representation captures some information about response length and it's relation to the prompt, making it useful for length prediction task. Alternatively, if LLM embeddings turn out to not be helpful, models should be able to learn to ignore this part of input.
+While presence of LLM IDs in input data does make LLM embeddings redundant, it was decided to include them in input data. LLM embedding vectors encode information necessary for distinguishing LLM models, derived from their responses - it is likely that this representation captures some information about response length and its relation to the prompt, making it useful for length prediction task. Alternatively, if LLM embeddings turn out to not be helpful, models should be able to learn to ignore this part of input.
 
 Output of response prediction models is the token count of the response. To compute it, \texttt{tiktoken} tokenizer is used. Similarly to scalar prompt features, output data is transformed to make prediction easier. Logarithm of token counts is taken, and resulting values are normalized to mean 0 and standard deviation equal to 1. Models learn to predict these values, and during inference inverse transformations are used to reconstruct the token count. Distribution of response lengths before and after the transformation are presented on figure \ref{figure:length-distribution}.
 
@@ -1620,7 +1620,7 @@ Output of response prediction models is the token count of the response. To comp
 \section{Metrics}
 \label{section:length-prediction-metrics}
 
-To diagnose model performance over the training process, a number of metrics were introduced in addition to training and validation loss function values. All metrics are computed after an inverse transformation of predicted vales, comparing them to the unprocessed response token counts.
+To diagnose model performance over the training process, a number of metrics were introduced in addition to training and validation loss function values. All metrics are computed after an inverse transformation of predicted values, comparing them to the unprocessed response token counts.
 
 \begin{itemize}
     \item \textbf{Mean average error:} $\operatorname{mean}(\vert \hat{y} - y \vert)$
@@ -1640,7 +1640,7 @@ Additionally, a synthetic accuracy-like metric was introduced, with the purpose 
 
 \subsection{Linear Regression Model}
 
-The first response length prediction model that was implemented relies on linear regression. It's purpose is to serve as a simple baseline for subsequent, more sophisticated models.
+The first response length prediction model that was implemented relies on linear regression. Its purpose is to serve as a simple baseline for subsequent, more sophisticated models.
 
 Linear regression approximates the relationship between input and output data as a linear function. Prediction process is given by equation \ref{equation:length-prediction-linear-regression}, where parameters $w_{m_i}$ and $b_{m_i}$ are trainable. Their values are set through least squares linear regression algorithm.
 
@@ -1661,7 +1661,7 @@ Results on \textit{LMArena} dataset are presented in table \ref{table:linear-reg
 
 \begin{table}[h]
     \centering
-    \caption{Linear regression model results - LMArena}
+    \caption{Linear regression model results - \textit{LMArena}}
     \begin{tabular}{
     >{\raggedright\arraybackslash}p{0.25\linewidth}
     >{\centering\arraybackslash}p{0.13\linewidth}
@@ -1689,7 +1689,7 @@ Results on \textit{LMArena} dataset are presented in table \ref{table:linear-reg
 
 \begin{table}[h]
     \centering
-    \caption{Linear regression model results - Chatbot Arena}
+    \caption{Linear regression model results - \textit{Chatbot Arena}}
     \begin{tabular}{
     >{\raggedright\arraybackslash}p{0.25\linewidth}
     >{\centering\arraybackslash}p{0.13\linewidth}
@@ -1721,7 +1721,7 @@ Introduction of additional features has different effects in case of each datase
 
 \subsection{Gradient Boosting Model}
 
-Gradient boosting length prediction model is very similar to it's equivalent used for scoring, described in section \ref{section:scoring-gb}. The model uses the same configurable input feature set, consisting of prompt embedding vectors, scalar prompt features, and LLM embeddings, additionally extended by one-hot-encoded LLM IDs. Output values that the model is fitted to predict are response length deviations from average values for a given model. 
+Gradient boosting length prediction model is very similar to its equivalent used for scoring, described in section \ref{section:scoring-gb}. The model uses the same configurable input feature set, consisting of prompt embedding vectors, scalar prompt features, and LLM embeddings, additionally extended by one-hot-encoded LLM IDs. Output values that the model is fitted to predict are response length deviations from average values for a given model. 
 
 Contrary to scoring problem, length prediction task does not require a sophisticated objective function design. Correctness of a given score assignment depended on the score assigned to the other sample in the training pair, requiring custom solutions. As length prediction is a straightforward regression task, mean squared error is used as loss function.
 
@@ -1765,7 +1765,7 @@ Interestingly, the model tends to overestimate the response length by a signific
 
 Dense network model is constructed in a similar way to the scoring model, described in section \ref{section:dnn-model}. Input data consists of prompt embedding vectors, scalar prompt features, LLM embeddings, and LLM IDs. Like in case of gradient boosting model, the network is trained to predict deviations from average response length of a given model.
 
-Model architecture is presented on figure \ref{fig:dn-length-prediction-arch}. Like in case of scoring models, the problem of inconsistent dimensionality and magnitude of different input components is addressed by introduction of projection layers. They are used with all input components, except LLM IDs - in this case, embedding module is introduced, with the same dimensionality as configured projection size.
+Model architecture is presented on figure \ref{fig:dn-length-prediction-arch}. As in the case of scoring models, the problem of inconsistent dimensionality and magnitude of different input components is addressed by introduction of projection layers. They are used with all input components, except LLM IDs - in this case, embedding module is introduced, with the same dimensionality as configured projection size.
 
 \begin{figure}[h]
     \centering
@@ -1778,7 +1778,7 @@ To address the vanishing gradient problem, residual connections were introduced 
 
 \subsubsection{Metrics}
 
-Additional metrics were introduced as an extensions of the set described in section \ref{section:length-prediction-metrics}. These metrics are mostly based on equivalent measures described in sections \ref{section:dnn-model-metrics} and \ref{section:transformer-model-metrics}, where reasoning behind the choice is explained. The main purpose of their introduction is interpretation of model predictions, and troubleshooting of potential obstacles that hinder it's learning process.
+Additional metrics were introduced as an extensions of the set described in section \ref{section:length-prediction-metrics}. These metrics are mostly based on equivalent measures described in sections \ref{section:dnn-model-metrics} and \ref{section:transformer-model-metrics}, where reasoning behind the choice is explained. The main purpose of their introduction is interpretation of model predictions, and troubleshooting of potential obstacles that hinder its learning process.
 
 \begin{itemize}
     \item \textbf{Projection variance and norm:} Variance and L2 norm of projected values of each input component (outputs of their projection layers) are tracked.
@@ -1792,7 +1792,7 @@ DNN model results are presented on figures \ref{figure:dn-embedding-length-predi
 
 Both models reach accuracy maximum quite quickly, after which they overfit. Still, achieved accuracy is better than in case of gradient boosting models. Interestingly, RMSE values did not improve. As accuracy is derived from average relative error, which exhibits linear behavior, the accuracy improvement likely is caused by better predictions for samples where predictions were already good.
 
-The model tends to overestimate the length of the response, and it's predictions have lower variance than the training set. This behavior is very similar to gradient boosting models described in previous section.
+The model tends to overestimate the length of the response, and its predictions have lower variance than the training set. This behavior is very similar to gradient boosting models described in previous section.
 
 The model behaves quite chaotically, as seen on all plots. Metric values change rapidly between subsequent epochs. This suggests that learning rate may be too high. However, lower learning rate results in significantly smaller peak accuracy - overfitting begins earlier (after correcting for slower changes), causing validation accuracy to stop growing at earlier point. Reducing the learning rate from $0.005$ to $0.001$ and $0.0005$ results in accuracies of $47.43 \%$ and $43.75 \%$ on \textit{LMArena}, and $46.70 \%$ and $45.52 \%$ on \textit{Chatbot Arena}.
 
@@ -1815,11 +1815,11 @@ The model behaves quite chaotically, as seen on all plots. Metric values change 
 
 The problem solved by the system is inherently multifaceted. The goal of multistep task completion while minimizing cost relies on cooperation of multiple components and subsystems. As such, when evaluating performance of the system, analysis of individual parts of the application is crucial in addition to overall quality.
 
-End-to-end system evaluation was performed using a benchmark of challenging, multistep questions, where an objectively correct answer is known, which makes automatic validation possible. Scoring component was evaluated by accuracy achieved over validation set, and it's extendability was researched by leaving one LLM out of training data, computing it's embedding vector, and evaluating scoring accuracy over it's comparison pairs. Response length prediction is evaluated in context of request cost estimation. It's impact on estimated cost is determined by swapping predicted response token count for the real value (after completing the request) and computing the cost in the same way. Additionally, the estimation method itself is analyzed by comparing it's outputs to real response cost, reported by \textit{OpenRouter}.  
+End-to-end system evaluation was performed using a benchmark of challenging, multistep questions, where an objectively correct answer is known, which makes automatic validation possible. Scoring component was evaluated by accuracy achieved over validation set, and its extendability was researched by leaving one LLM out of training data, computing its embedding vector, and evaluating scoring accuracy over its comparison pairs. Response length prediction is evaluated in context of request cost estimation. Its impact on estimated cost is determined by swapping predicted response token count for the real value (after completing the request) and computing the cost in the same way. Additionally, the estimation method itself is analyzed by comparing its outputs to real response cost, reported by \textit{OpenRouter}.  
 
 \section{GAIA Benchmark}
 
-To measure an overall quality of the system, \textit{GAIA} benchmark was chosen. Introduced by G.~Mialon et. al. in a paper titled \textit{GAIA: a benchmark for General AI Assistants} \cite{mialon2023gaia}, GAIA is described as a benchmark for General AI Assistants. It consists of 466 validation questions (and 300 test questions, to which correct answers are not publicly available), divided into three difficulty levels. It departs from a trend of agentic benchmarks becoming increasingly hard for humans, instead consisting of tasks that are conceptually straightforward, but requiring multiple diverse steps to complete, while paying close attention to detail.
+To measure an overall quality of the system, \textit{GAIA} benchmark was chosen. Introduced by G.~Mialon et al. in a paper titled \textit{GAIA: a benchmark for General AI Assistants} \cite{mialon2023gaia}, GAIA is described as a benchmark for General AI Assistants. It consists of 466 validation questions (and 300 test questions, to which correct answers are not publicly available), divided into three difficulty levels. It departs from a trend of agentic benchmarks becoming increasingly hard for humans, instead consisting of tasks that are conceptually straightforward, but requiring multiple diverse steps to complete, while paying close attention to detail.
 
 All benchmark questions require a short text response, with a single objectively correct response. All questions clearly specify expected output format, which, together with an objective true answer, makes it possible to evaluate answers by simply comparing text output of benchmarked LLM or agent against the expected true value.
 
@@ -1841,7 +1841,7 @@ An example task included in \textit{GAIA} dataset (level 1) is presented on figu
 
 From these quantities, the time of $17054.89~h$ can be computed. Rounding to the nearest thousand and returning the number of thousands, a correct answer of $17$ is deduced.
 
-The choice of \textit{GAIA} benchmark for system evaluation was motivated primarily by an inherently multistep nature of it's tasks, possibility of automatic response grading, and required capabilities matching those supported by the system. Most \textit{GAIA} questions require web search and file input (mostly PDF, text, and XML MS Office formats). The full list of agent capabilities required to complete \textit{GAIA} task is presented below.
+The choice of \textit{GAIA} benchmark for system evaluation was motivated primarily by an inherently multistep nature of its tasks, possibility of automatic response grading, and required capabilities matching those supported by the system. Most \textit{GAIA} questions require web search and file input (mostly PDF, text, and XML MS Office formats). The full list of agent capabilities required to complete \textit{GAIA} task is presented below.
 
 \begin{itemize}
     \item \textbf{Web search:} 119 tasks,
@@ -1859,7 +1859,7 @@ The choice of \textit{GAIA} benchmark for system evaluation was motivated primar
     \item \textbf{PDB file (protein structure) input:} 1 task (unsupported).
 \end{itemize}
 
-Task which are impossible for the system to complete due to lack of support for required capability were excluded from the benchmark during evaluation. In total, 22 tasks (13 \%) were skipped.
+Tasks which are impossible for the system to complete due to lack of support for required capability were excluded from the benchmark during evaluation. In total, 22 tasks (13 \%) were skipped.
 
 \subsection{Example Task Execution Process}
 
@@ -1917,7 +1917,7 @@ The third step is completed by \textit{Gemini 2.5 Flash}. Output is shown on fig
     \label{figure:gaia-question-task-execution-example-step-3}
 \end{figure}
 
-The final step, completed by \textit{Deepseek R1}, returns the final answer: $735~626$.
+The final step, completed by \textit{DeepSeek R1}, returns the final answer: $735~626$.
 
 \subsection{Results}
 
@@ -1927,19 +1927,19 @@ Human respondents achieve $92\%$ accuracy on benchmark tasks, according to origi
 
 As \textit{GAIA} tasks often require extensive tool use and multistep reasoning, the gap in performance achieved by single-call LLM evaluations and agentic systems is large. The original paper describes evaluation of \textit{GPT-4} with manually selected plugins, which achieved only $15\%$ overall accuracy ($30\%$ on level 1 tasks). Since the nature of the benchmark is inherently agentic, new research doesn't focus on single-call LLM performances.
 
-Performance of agentic systems on the benchmark varies, significantly improving over recent months. State-of-the-art performance improved from $33.33\%$ achieved by \textit{HuggingFace's Transformers Code Agent} \cite{roucher2024beatinggaia} using \textit{GPT-4} soon after benchmark release, to most recent $74.6\%$ \cite{gaia2025leaderboard} achieved by \textit{HAL (Hollistic Agentic Leaderboard)} agentic framework \cite{kapoor2026hal}, using \textit{Claude 4.5 Sonnet}.
+The performance of agentic systems on the benchmark varies, significantly improving over recent months. State-of-the-art performance improved from $33.33\%$ achieved by \textit{HuggingFace's Transformers Code Agent} \cite{roucher2024beatinggaia} using \textit{GPT-4} soon after benchmark release, to most recent $74.6\%$ \cite{gaia2025leaderboard} achieved by \textit{HAL (Hollistic Agentic Leaderboard)} agentic framework \cite{kapoor2026hal}, using \textit{Claude 4.5 Sonnet}.
 
 \subsubsection{Performance of the System}
 
 The system was evaluated with restricted set of available LLMs (described in section \ref{section:model-restriction}). To ensure that quality prediction models can assign a meaningful score to every LLM, only LLMs included in \textit{LMArena} dataset could be chosen.
 
-Overall, the system achieved $41.26 \%$ accuracy across all benchmark tasks. $54.35 \%$ accuracy was achieved on level 1 tasks, $41.03 \%$ - on level 2, and $10.53 \%$ - on level 3. Interestingly, a significant portion of failures (13 out of 84) is not caused by reasoning errors, but by inaccurate output format. Regularly, instead of responding with a single number, LLM produces a full sentence response, or given an instruction to output a comma-separated list of items returns a JSON-style list (enclosed in square brackets). This behavior persists after adjusting the evaluation prompt to highlight the importance of exact output format, and to suggest an additional format-checking step during initial planning LLM call. Treating these answers as correct, the overall accuracy of the system rises to $50.35 \%$.
+Overall, the system achieved $41.26 \%$ accuracy across all benchmark tasks. $54.35 \%$ accuracy was achieved on level 1 tasks, $41.03 \%$ - on level 2, and $10.53 \%$ - on level 3. Interestingly, a significant portion of failures (13 out of 84) is not caused by reasoning errors, but by inaccurate output format. Frequently, instead of responding with a single number, LLM produces a full sentence response, or given an instruction to output a comma-separated list of items returns a JSON-style list (enclosed in square brackets). This behavior persists after adjusting the evaluation prompt to highlight the importance of exact output format, and to suggest an additional format-checking step during initial planning LLM call. Treating these answers as correct, the overall accuracy of the system rises to $50.35 \%$.
 
 \subsubsection{Performance with a Single Step Completion LLM}
 
 % TODO(maybe): Run evaluation with best model from LMArena?
 
-The system relies on dynamic LLM selection for step completion. It's impact can be measured by replacing selection logic with a single pre-defined LLM model. As the system is designed to balance task completion cost with response quality, two reference experiments were performed. In the first case, step completion LLM was set to a model known for it's high cost and competitive reasoning ability - \textit{Claude 4.7 Opus}. In the second case, one of the cheapest LLMs available through \textit{OpenRouter} was chosen - \textit{Gemini 2.0 Fast}. While there are cheaper alternatives, \textit{Gemini} model was chosen due to native web search ability and multimodal input, without which a significant fraction of tasks cannot be completed.
+The system relies on dynamic LLM selection for step completion. Its impact can be measured by replacing selection logic with a single pre-defined LLM model. As the system is designed to balance task completion cost with response quality, two reference experiments were performed. In the first case, step completion LLM was set to a model known for its high cost and competitive reasoning ability - \textit{Claude 4.7 Opus}. In the second case, one of the cheapest LLMs available through \textit{OpenRouter} was chosen - \textit{Gemini 2.0 Flash}. While there are cheaper alternatives, \textit{Gemini} model was chosen due to native web search ability and multimodal input, without which a significant fraction of tasks cannot be completed.
 
 \begin{table}[h]
     \centering
@@ -1969,9 +1969,9 @@ The system relies on dynamic LLM selection for step completion. It's impact can 
     \label{table:gaia-accuracy-cost-comparison}
 \end{table}
 
-Results are presented in table \ref{table:gaia-accuracy-cost-comparison}, along with the results achieved by the system with dynamic model selection. As expected, the variant which uses \textit{Claude 4.7 Opus} achieved the best results, while also being the most expensive. Similarly, \textit{Gemini 2.0 Fast} did the worst, but incurred the lowest cost. In comparison, accuracy achieved by the system does not look too great - the score is closer to \textit{Gemini} result. This can be explained by the restriction of available models to the set present in \textit{LMArena} dataset - all used models were published before the dataset release date. The highest score (according to \textit{HAL} leaderboard \cite{kapoor2026hal}) among models included in the dataset was achieved by \textit{Claude 3.7 Sonnet} - $56.36 \%$. 
+Results are presented in table \ref{table:gaia-accuracy-cost-comparison}, along with the results achieved by the system with dynamic model selection. As expected, the variant which uses \textit{Claude 4.7 Opus} achieved the best results, while also being the most expensive. Similarly, \textit{Gemini 2.0 Flash} did the worst, but incurred the lowest cost. In comparison, accuracy achieved by the system does not look too great - the score is closer to \textit{Gemini} result. This can be explained by the restriction of available models to the set present in \textit{LMArena} dataset - all used models were published before the dataset release date. The highest score (according to \textit{HAL} leaderboard \cite{kapoor2026hal}) among models included in the dataset was achieved by \textit{Claude 3.7 Sonnet} - $56.36 \%$. 
 
-The cost of evaluation using dynamic model selection is significantly closer to the cost of \textit{Gemini} variant than to \textit{Opus}. Again, while a portion of this difference can be attributed to dynamic model selection, it is also caused by restricting the selection to older models.
+The cost of evaluation using dynamic model selection is significantly closer to the cost of the \textit{Gemini} variant than to \textit{Opus}. Again, while a portion of this difference can be attributed to dynamic model selection, it is also caused by restricting the selection to older models.
 
 \section{Quality Prediction}
 
@@ -1989,11 +1989,11 @@ As described in section \ref{section:requirements}, response quality prediction 
 
 To evaluate effectiveness of extending existing models to new LLMs, accuracies were compared between scoring models trained on full comparison dataset, and models trained on the dataset with a single LLM comparison excluded. After fitting, embedding vector of withheld LLM was computed using embedding sub-model, and evaluation was performed, using computed vector as representation of the excluded LLM.
 
-The experiment was performed 10 times on each dataset, selecting a different withheld LLM model each time, and averaging the results. DNN model was chosen as the scoring model, due to it's best (albeit marginally) performance. On \textit{LMArena}, average accuracy achieved across pairs containing the unseen LLM model was equal to $58.48 \%$. On \textit{Chatbot Arena}, accuracy of $67.51 \%$ was achieved. Results are, as expected, worse than when all LLMs are included in training data - accuracy over withheld LLM pairs is lower by $4.127 \%$ and $8.131 \%$. Still, drops in accuracy are relatively small, and achieved performance is much better than random.
+The experiment was performed 10 times on each dataset, selecting a different withheld LLM model each time, and averaging the results. DNN model was chosen as the scoring model, due to its best (albeit marginally) performance. On \textit{LMArena}, average accuracy achieved across pairs containing the unseen LLM model was equal to $58.48 \%$. On \textit{Chatbot Arena}, accuracy of $67.51 \%$ was achieved. Results are, as expected, worse than when all LLMs are included in training data - accuracy over withheld LLM pairs is lower by $4.127 \%$ and $8.131 \%$. Still, drops in accuracy are relatively small, and achieved performance is much better than random.
 
 \section{Cost Estimation}
 
-Cost estimation is the second vital component of LLM selection process, beside response quality prediction. Mismatch between real request cost and predicted quantity has two sources: response token count prediction error, and cost estimation algorithm that uses this predicted value. Impact of both causes is measured separately.
+Cost estimation is the second vital component of LLM selection process, besides response quality prediction. Mismatch between real request cost and predicted quantity has two sources: response token count prediction error, and cost estimation algorithm that uses this predicted value. Impact of both causes is measured separately.
 
 During every task step execution, three values are recorded:
 
@@ -2034,21 +2034,21 @@ In addition to step completion costs, whose estimates are used during LLM select
 
 An overall evaluation of the project is multidimensional, without a clear conclusion of success or failure. The system fulfills all requirements specified in section \ref{section:requirements} - task completion process works in a planned way, being able to complete multi-step queries involving multimodal inputs. As described in section \ref{section:solution-analysis}, the performance of the system on \textit{GAIA} benchmark is satisfactory, although not impressive. 
 
-Cost estimation process is far from exact, mostly because of the complexity in LLM response billing. Related machine learning models, which attempt to predict LLM response token count, show a significant improvement over baseline linear regression approach, although error magnitude of their predictions is quite significant. On the other hand, the impact of these errors turns out to be marginal in comparison to estimation errors, which makes further efforts towards improving prediction models not justified.
+Cost estimation process is far from exact, mostly because of the complexity in LLM response billing. Related machine learning models, which attempt to predict LLM response token count, show a significant improvement over baseline linear regression approach, although the error magnitude of their predictions is quite significant. On the other hand, the impact of these errors turns out to be marginal in comparison to estimation errors, which makes further efforts towards improving prediction models not justified.
 
-The main research-focused component of the project, LLM response quality prediction, was mostly a failure. Despite implementing numerous machine learning models, experimenting with different approaches and configurations, and introducing a variety of monitoring and troubleshooting metrics, none of the models were able to achieve a significant improvement over the prompt-invariant baseline. The path to improvement is not clear - all tested models and configurations converged on similar (although not identical) local maximum, after which they heavily overfit, which suggests that scaling up model size might improve the result. The formulation of the LLM routing problem that scoring models were supposed to solve is significantly more complex than similar problems described in referenced papers and articles (among others, \textit{RouteLLM} \cite{ong2025routellm} and \textit{RoRF: Routing on Random Forests} \cite{notdiamond2024rorf}). It's possible that the challenge was too ambitious given the knowledge and resources. 
+The main research-focused component of the project, LLM response quality prediction, was mostly a failure. Despite implementing numerous machine learning models, experimenting with different approaches and configurations, and introducing a variety of monitoring and troubleshooting metrics, none of the models were able to achieve a significant improvement over the prompt-invariant baseline. The path to improvement is not clear - all tested models and configurations converged on a similar (although not identical) local maximum, after which they heavily overfit, which suggests that scaling up model size might improve the result. The formulation of the LLM routing problem that scoring models were supposed to solve is significantly more complex than similar problems described in referenced papers and articles (among others, \textit{RouteLLM} \cite{ong2025routellm} and \textit{RoRF: Routing on Random Forests} \cite{notdiamond2024rorf}). It's possible that the challenge was too ambitious given the knowledge and resources. 
 
-Even though the performance of scoring component is deeply unsatisfactory, it's impact on the overall performance of the system is limited. Even if assigned scores effectively ignore provided prompt, scores assigned based only on LLM identity are still used to optimize the balance between output quality and completion cost.
+Even though the performance of the scoring component is deeply unsatisfactory, its impact on the overall performance of the system is limited. Even if assigned scores effectively ignore provided prompt, scores assigned based only on LLM identity are still used to optimize the balance between output quality and completion cost.
 
-Despite suboptimal performance of scoring models, LLM embedding sub-models achieved a satisfactory result. Based on Lee et. al. \textit{Set Transformer} paper, attention embedding model was able to consistently fingerprint LLMs by their responses, fulfilling the requirement of independence from the set of LLMs included in the comparison dataset, and making the system extendable to new LLM models without requiring a human-annotated set of samples.
+Despite the suboptimal performance of scoring models, LLM embedding sub-models achieved a satisfactory result. Based on Lee et al. \textit{Set Transformer} paper, attention embedding model was able to consistently fingerprint LLMs by their responses, fulfilling the requirement of independence from the set of LLMs included in the comparison dataset, and making the system extendable to new LLM models without requiring a human-annotated set of samples.
 
 \section{Possible Continuation}
 
 The project addressed and explored a variety of challenges and sub-problems. The large number of topics described in this work naturally brings about a variety of aspects that could be further addressed and improved.
 
-The system implementation could be extended in a multitude of ways. The most natural component that the system lacks is a graphical user interface. It was not implemented due to it's low importance in comparison to other problems and components, and due to lack of necessity - as operations that the system allows the user to perform are very simple from user's perspective, simply using the API directly is not problematic, both in case of manual testing and automatic evaluation. A number of other parts of the system could be improved as well. Reliance on valid output being returned by the initial planning LLM call could be avoided, even though it did not cause issues during evaluation. A wider range of supported LLM tools could be implemented: asking a question to the user, Python code execution, or downloading files from the web. A wider range of file types could be supported as well.
+The system implementation could be extended in a multitude of ways. The most natural component that the system lacks is a graphical user interface. It was not implemented due to its low importance in comparison to other problems and components, and due to lack of necessity - as operations that the system allows the user to perform are very simple from user's perspective, simply using the API directly is not problematic, both in case of manual testing and automatic evaluation. A number of other parts of the system could be improved as well. Reliance on valid output being returned by the initial planning LLM call could be avoided, even though it did not cause issues during evaluation. A wider range of supported LLM tools could be implemented: asking a question to the user, Python code execution, or downloading files from the web. A wider range of file types could be supported as well.
 
-The scoring component needs further improvements the most, however the direction of these improvements is not obvious. A further exploration of existing and new model architectures could be fruitful. As implemented models expose a large number of hyperparameters, automatic hyperparameter tuning solutions could be used to explore different configurations. However, the fact that all explored approaches converge on a very similar accuracy value is not promising. Increasing the number of parameters could also be researched, although a strong tendency to overfit that all models exhibit suggest that results will likely not be satisfactory.
+The scoring component needs further improvements the most, however, the direction of these improvements is not obvious. A further exploration of existing and new model architectures could be fruitful. As implemented models expose a large number of hyperparameters, automatic hyperparameter tuning solutions could be used to explore different configurations. However, the fact that all explored approaches converge on a very similar accuracy value is not promising. Increasing the number of parameters could also be researched, although a strong tendency to overfit that all models exhibit suggest that results will likely not be satisfactory.
 
 % ------------------------------- BIBLIOGRAPHY ---------------------------
 % LEXICOGRAPHICAL ORDER BY AUTHORS' LAST NAMES
