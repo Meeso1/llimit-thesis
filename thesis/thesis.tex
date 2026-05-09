@@ -1260,11 +1260,33 @@ Each metric is computed separately on training and validation sets.
 
 \subsubsection{Results}
 
-DNN model results are presented on figures \ref{figure:dnn-scoring-results-lmarena} and \ref{figure:dnn-scoring-results-chatbot-arena}. On \textit{LMArena}, model reaches $62.61 \%$ accuracy after 80 training epochs. On \textit{Chatbot Arena}, $75.64 \%$ is reached after 33 epochs.
+DNN model results are presented on figures \ref{figure:dnn-scoring-results-lmarena} and \ref{figure:dnn-scoring-results-chatbot-arena}. On \textit{LMArena}, model reaches $62.61 \%$ accuracy after 80 training epochs. On \textit{Chatbot Arena}, $75.64 \%$ is reached after 33 epochs. Post-training sensitivity analysis results are shown in table \ref{table:dnn-scoring-results}.
 
 In both cases, improvement is marginal. Over the first 30 training epochs, training accuracy improves rapidly, with validation accuracy exhibiting a much slower growth. Afterwards, training accuracy continues improving at a slower pace, while validation accuracy stalls, and eventually starts to decrease slowly. Input projection variances show that while prompt embedding vectors are essentially ignored, scalar prompt feature projections have a similar norm and variance to LLM embeddings. Initially, the model seems to learn to mostly rely on LLM embeddings to learn optimal prompt-invariant scores. Then, it begins discovering certain relationships between the prompt and assigned score - this can be seen on score variance decomposition plot. However, these relationships don't seem to translate to validation set well. While a small fraction of them might be responsible for a small improvement in accuracy over prompt-invariant models, the difference between training and validation accuracy clearly state that a vast majority of patterns learned by the model in later stages are simply random artifacts of dataset split.
 
+Inspection of model sensitivity (computed on validation set) gives additional insight into model behavior. In case of \textit{Chatbot Arena} dataset, we can conclude that the model did not learn any useful relationships between prompt data and assigned score - random permutation of prompt data achieves a better (although only by $0.02 \%$) accuracy. Setting prompt embedding vectors to their mean does reduce the accuracy slightly, but the magnitude of this reduction is similar to the improvement observed for other sensitivity tests, the value can be explained by random noise. In case of \textit{LMArena}, sensitivities are small but positive. Shuffling prompt information causes accuracy reduction of $1.33 \%$. The most impactful scalar features are prompt character count ($0.43 \%$ reduction) and inverse type-token ratio ($0.34 \%$).
+
 % TODO(maybe): Ablation study - change 1 parameter in used config and check how accuracy changes
+
+\begin{table}[h]
+    \centering
+    \caption{DNN scoring model results}
+    \begin{tabular}{
+    >{\raggedright\arraybackslash}p{0.40\linewidth}
+    >{\centering\arraybackslash}p{0.20\linewidth}
+    >{\centering\arraybackslash}p{0.20\linewidth}
+    }
+        \toprule
+        & \textit{LMArena} & \textit{Chatbot Arena} \\
+        \midrule
+        Accuracy [\%]                      & $62.61$  & $75.64$  \\
+        Prompt sensitivity [\%]            & $1.33$   & $-0.02$  \\
+        Prompt embedding sensitivity [\%]  & $0.31$   & $0.15$   \\
+        Scalar features sensitivity [\%]   & $0.26$   & $-0.13$  \\
+        \bottomrule
+    \end{tabular}
+    \label{table:dnn-scoring-results}
+\end{table}
 
 \begin{figure}[!h]
     \centering
@@ -1315,11 +1337,33 @@ To monitor learning process of the gradient boosting model, the following metric
 
 % TODO(write): training configurations - where to put them? In model sections? In some apprendix? Just refer to the repo?
 
-Training results on each dataset are presented on figures \ref{figure:gradient-boosting-scoring-results-lmarena} and \ref{figure:gradient-boosting-scoring-results-chatbot-arena}. 
+Training results on each dataset are presented on figures \ref{figure:gradient-boosting-scoring-results-lmarena} and \ref{figure:gradient-boosting-scoring-results-chatbot-arena}. Post-training metrics are shown in table \ref{table:gradient-boosting-scoring-results}.
 
 Both sets of plots look very similar. Training loss behaves similarly to validation loss initially. After a relatively small number of epochs, the rapid loss decrease slows down, with validation loss converging to a certain minimum level, and training loss maintaining a slower downward trend. Feature block importance plot shows that, in both cases, the model initially relies on LLM embeddings, whose influence diminishes in favor of prompt embeddings over training duration. Scalar prompt features are ignored by the model in both cases. Standard deviation of predictions rises steadily in both cases, while tree contributions gradually get smaller.
 
 Despite these similarities, model performance over each dataset is quite different. In case of \textit{Chatbot Arena}, validation accuracy is rising over the training period, albeit significantly slower than training accuracy. Best recorded validation accuracy of $75.27 \%$ is achieved after 66 training epochs. \textit{LMArena} model does not exhibit the same behavior. While the best validation accuracy of $62.38 \%$ is recorded after a similar number of epochs, its values don't change nearly as much, and the improvement can be attributed to chance. It seems that the relationship between prompt embedding vectors and assigned score, that the model learns over the training duration, partially generalizes to validation set in case of \textit{Chatbot Arena}. This generalization does not exist in \textit{LMArena} dataset.
+
+Sensitivity analysis shows that the model doesn't use prompt information - permutation of prompts causes no accuracy loss.
+
+\begin{table}[h]
+    \centering
+    \caption{Gradient boosting scoring model results}
+    \begin{tabular}{
+    >{\raggedright\arraybackslash}p{0.40\linewidth}
+    >{\centering\arraybackslash}p{0.20\linewidth}
+    >{\centering\arraybackslash}p{0.20\linewidth}
+    }
+        \toprule
+        & \textit{LMArena} & \textit{Chatbot Arena} \\
+        \midrule
+        Accuracy [\%]                           & $62.28$  & $74.87$  \\
+        Prompt sensitivity [\%]                 & $0.00$   & $0.00$   \\
+        Prompt embedding sensitivity [\%]       & $0.06$   & $0.21$   \\
+        Scalar features sensitivity [\%]        & $0.14$   & $0.06$   \\
+        \bottomrule
+    \end{tabular}
+    \label{table:gradient-boosting-scoring-results}
+\end{table}
 
 \begin{figure}[!h]
     \centering
@@ -1423,13 +1467,33 @@ Orthogonalization is performed using Newton-Schulz iterative method. It is an ap
 
 \subsubsection{Results}
 
-Transformer model results are presented on figures \ref{figure:transformer-results-lmarena} and \ref{figure:transformer-results-chatbot-arena}. On \textit{LMArena}, model reaches $61.79 \%$ accuracy after 14 training epochs. On \textit{Chatbot Arena}, $74.64 \%$ is reached after 38 epochs.
+Transformer model results are presented on figures \ref{figure:transformer-results-lmarena} and \ref{figure:transformer-results-chatbot-arena}. On \textit{LMArena}, model reaches $61.79 \%$ accuracy after 14 training epochs. On \textit{Chatbot Arena}, $74.64 \%$ is reached after 38 epochs. Sensitivity analysis results are shown in table \ref{table:transformer-scoring-results}.
 
 Transformer model training is the most time consuming out of all implemented models, taking multiple hours for each run. As \textit{LMArena} dataset contains about 5 times more samples than \textit{Chatbot Arena}, a difference in training time between datasets is significant. This difference motivates unequal number of training epochs - 30 training epochs were performed for \textit{LMArena} model, while 120 epochs were computed for \textit{Chatbot Arena} model.
 
 In both cases, model performance is not the best. Scoring accuracy on both datasets is right below the prompt-invariant baseline. \textit{LMArena} model training turned out to be too short - training loss values barely decrease. In case of \textit{Chatbot Arena}, 120 epochs are enough for the model to start learning, and for loss values to decrease. Validation accuracy slowly increases for the first 40 epochs, after which the model starts to overfit.
 
-Score variance decomposition and gradient attribution plots show strong reliance on model embeddings, which does not change over the training period. However, projection norms and gradient magnitudes don't collapse to 0. It seems like the model is simply not able to find any useful relationships between prompt information and assigned score, instead relying on LLM identity.
+Score variance decomposition and gradient attribution plots show strong reliance on model embeddings, which does not change over the training period. However, projection norms and gradient magnitudes don't collapse to 0. It seems like the model is simply not able to find any useful relationships between prompt information and assigned score, instead relying on LLM identity. This explanation is confirmed by sensitivity metrics.
+
+\begin{table}[h]
+    \centering
+    \caption{Transformer model results}
+    \begin{tabular}{
+    >{\raggedright\arraybackslash}p{0.40\linewidth}
+    >{\centering\arraybackslash}p{0.20\linewidth}
+    >{\centering\arraybackslash}p{0.20\linewidth}
+    }
+        \toprule
+        & \textit{LMArena} & \textit{Chatbot Arena} \\
+        \midrule
+        Accuracy [\%]                      & $61.79$  & $74.64$  \\
+        Prompt sensitivity [\%]            & $0.27$   & $-0.07$  \\
+        Prompt embedding sensitivity [\%]  & $0.00$   & $0.00$   \\
+        Scalar features sensitivity [\%]   & $0.12$   & $-0.09$  \\
+        \bottomrule
+    \end{tabular}
+    \label{table:transformer-scoring-results}
+\end{table}
 
 \begin{figure}[!h]
     \centering
@@ -1527,10 +1591,32 @@ Last criterion is given by equation \ref{equation:distribution-loss}. It is a su
 
 \subsubsection{Results}
 
-Response predictive model results are shown on figures \ref{figure:response-predictive-results-lmarena} and \ref{figure:response-predictive-results-chatbot-arena}. Additionally, figures \ref{figure:response-predictive-loss-lmarena} and \ref{figure:response-predictive-loss-chatbot-arena} present loss component changes and related metrics. On \textit{LMArena}, model reaches $62.09 \%$ accuracy after 28 training epochs. On \textit{Chatbot Arena}, $74.98 \%$ is reached after 91 epochs.
+Response predictive model results are shown on figures \ref{figure:response-predictive-results-lmarena} and \ref{figure:response-predictive-results-chatbot-arena}. Additionally, figures \ref{figure:response-predictive-loss-lmarena} and \ref{figure:response-predictive-loss-chatbot-arena} present loss component changes and related metrics. On \textit{LMArena}, model reaches $62.09 \%$ accuracy after 28 training epochs. On \textit{Chatbot Arena}, $74.98 \%$ is reached after 91 epochs. Post-training sensitivity analysis results are shown in table \ref{table:response-predictive-results}.
 
 Plots tell a similar story to previously described approaches. The model is quick to achieve accuracy similar to the prompt-invariant baseline, after which it starts learning patterns which do not generalize to validation set. Monitored metrics don't show any clear cause of this behavior. Gradient magnitudes don't collapse to zero, projection norms decrease in a controlled fashion.
 
+Conversely to previously described models, response predictive model shows some reliance on prompt information, especially on \textit{Chatbot Arena} dataset. Scalar features sensitivity is significantly smaller. \textit{LMArena} model is the most sensitive to average word length ($0.26 \%$), while for the model trained on \textit{Chatbot Arena}, highest sensitivity is recorded for word count feature ($0.73 \%$) and question density ($0.52 \%$). Interestingly, sensitivity to most improtant features for \textit{Chatbot Arena} model is significantly higher than sensitivity to all scalar features as a whole - the model likely relies on some relationship between these and other scalar features, which is broken after only one component is changed.
+
+\begin{table}[h]
+    \centering
+    \caption{Response predictive model results}
+    \begin{tabular}{
+    >{\raggedright\arraybackslash}p{0.40\linewidth}
+    >{\centering\arraybackslash}p{0.20\linewidth}
+    >{\centering\arraybackslash}p{0.20\linewidth}
+    }
+        \toprule
+        & \textit{LMArena} & \textit{Chatbot Arena} \\
+        \midrule
+        Accuracy [\%]                              & $62.09$  & $74.98$  \\
+        Scorer accuracy (real repr.) [\%]          & $63.13$  & $70.05$  \\
+        Prompt sensitivity [\%]                    & $0.97$   & $2.84$   \\
+        Prompt embedding sensitivity [\%]          & $0.52$   & $0.88$   \\
+        Scalar features sensitivity [\%]           & $0.20$   & $0.21$   \\
+        \bottomrule
+    \end{tabular}
+    \label{table:response-predictive-results}
+\end{table}
 
 \begin{figure}[!h]
     \centering
@@ -1577,9 +1663,31 @@ An additional advantage of multi-stage approach is faster training. Complex mode
 
 \subsubsection{Results}
 
-Multistage approach was tested using prompt-invariant gradient boosting model as base stage, and DNN model as secondary. Results are presented on figures \ref{figure:dnn-multistage-results-lmarena} and \ref{figure:dnn-multistage-results-chatbot-arena}. On \textit{LMArena}, multistage model achieved $62.53 \%$ accuracy after 27 epochs. On \textit{Chatbot Arena}, $75.34 \%$ was achieved after 23 epochs.
+Multistage approach was tested using prompt-invariant gradient boosting model as base stage, and DNN model as secondary. Results are presented on figures \ref{figure:dnn-multistage-results-lmarena} and \ref{figure:dnn-multistage-results-chatbot-arena}. On \textit{LMArena}, multistage model achieved $62.53 \%$ accuracy after 27 epochs. On \textit{Chatbot Arena}, $75.34 \%$ was achieved after 23 epochs. Sensitivity analysis results are presented in table \ref{table:dnn-multistage-results}.
 
-Plots look similar to their counterparts describing the variant without the base model. Expectedly, the main difference is a much shorter and less steep initial learning period, during which training and validation accuracy rise together to the baseline level - the baseline is the starting point in this case. 
+Plots look similar to their counterparts describing the variant without the base model. Expectedly, the main difference is a much shorter and less steep initial learning period, during which training and validation accuracy rise together to the baseline level - the baseline is the starting point in this case.
+
+In case of \textit{Chatbot Arena} model, prompt sensitivity is exactly the same as for DNN model without the base prompt-invariant predictor (table \ref{table:dnn-scoring-results}) - prompt information is ignored. \textit{LMArena} model shows lower sensitivity to prompt information than in aforementioned case. However, sensitivity to scalar features is higher. The most meaningful scalar features are prompt character count ($0.30 \%$) and multi-part request density ($0.21 \%$).
+
+\begin{table}[h]
+    \centering
+    \caption{Multistage model results}
+    \begin{tabular}{
+    >{\raggedright\arraybackslash}p{0.40\linewidth}
+    >{\centering\arraybackslash}p{0.20\linewidth}
+    >{\centering\arraybackslash}p{0.20\linewidth}
+    }
+        \toprule
+        & \textit{LMArena} & \textit{Chatbot Arena} \\
+        \midrule
+        Accuracy [\%]                      & $62.53$  & $75.34$  \\
+        Prompt sensitivity [\%]            & $0.97$   & $-0.04$  \\
+        Prompt embedding sensitivity [\%]  & $0.05$   & $0.02$   \\
+        Scalar features sensitivity [\%]   & $0.53$   & $-0.19$  \\
+        \bottomrule
+    \end{tabular}
+    \label{table:dnn-multistage-results}
+\end{table}
 
 \begin{figure}[!h]
     \centering
@@ -1739,13 +1847,41 @@ In addition to metrics described in section \ref{section:length-prediction-metri
 
 \subsubsection{Results}
 
-Gradient boosting model results are presented on figures \ref{figure:gb-length-prediction-metrics-lmarena} and \ref{figure:gb-length-prediction-metrics-chatbot-arena}. On \textit{LMArena}, the model reaches $41.05 \%$ accuracy after 500 epochs (with relative mean squared error equal to $0.6856$ and mean average error of $175.13$). On \textit{Chatbot Arena}, accuracy values reach $43.79 \%$ after 499 epochs (RMSE reaches $0.7438$ and MAE equals $70.20$).
+Gradient boosting model results are presented on figures \ref{figure:gb-length-prediction-metrics-lmarena} and \ref{figure:gb-length-prediction-metrics-chatbot-arena}. On \textit{LMArena}, the model reaches $41.05 \%$ accuracy after 500 epochs (with relative mean squared error equal to $0.6856$ and mean average error of $175.13$). On \textit{Chatbot Arena}, accuracy values reach $43.79 \%$ after 499 epochs (RMSE reaches $0.7438$ and MAE equals $70.20$). Post-training metrics are shown in table \ref{table:gb-length-prediction-results}.
 
 Both models perform significantly better than linear regression baseline. RMSE and MAE values were improved by about $30 \%$. Monitored metrics show steady convergence, although with a certain degree of overfitting - training accuracy and loss improve quicker than validation values. On \textit{LMArena}, the model initially heavily relies on scalar prompt features, with prompt embedding having much smaller influence on the result. However, over the course of training newly added trees start relying more and more on prompt embedding vectors, which ultimately leads to reversing the relationship. At the end of training period, prompt embeddings have higher significance than scalar features. In case of \textit{Chatbot Arena}, prompt embedding have higher significance from the very beginning.
 
-LLM ID and embedding vectors are used in a small fraction of splits. This might signify that they are not important, although a more plausible explanation is that a small number of splits is sufficient - datasets contain samples from only a small number of LLM models.
+LLM ID and embedding vectors are used in a small fraction of splits, and sensitivity analysis further confirms that the model effectively ignores this input. LLM embedding vectors are not ignored, though, although their gain is rather small. Metrics suggest that prompt information is significantly more important than LLM information when response length is predicted, conversely to the relationship observed during response quality prediction.
+
+Prompt embedding vectors are more important than scalar features. On \textit{LMArena}, gain fractions are of comparable magnitude, while on \textit{Chatbot Arena} embedding vectors are responsible for 10 times larger gain. Surprisingly, prompt length's importance is quite small. This fact can be easily explained for \textit{LMArena} model - the highest gain fraction is attributed instead to prompt word count ($28.01 \%$), followed by average word length ($2.48 \%$). This explanation does not extend to \textit{Chatbot Arena} model - prompt length has the highest importance in this case, followed by specificity density ($1.08 \%$) and wether the prompt starts with a verb ($0.66 \%$). 
 
 Interestingly, the model tends to overestimate the response length by a significant margin. It's predictions also exhibit significantly smaller variance than training data.
+
+\begin{table}[h]
+    \centering
+    \caption{Gradient boosting length prediction model results}
+    \begin{tabular}{
+    >{\raggedright\arraybackslash}p{0.4\linewidth}
+    >{\centering\arraybackslash}p{0.2\linewidth}
+    >{\centering\arraybackslash}p{0.2\linewidth}
+    }
+        \toprule
+        & \textit{LMArena} & \textit{Chatbot Arena} \\
+        \midrule
+        Accuracy [\%]                       & $41.05$  & $43.79$  \\
+        MAE                                 & $175.13$ & $70.20$  \\
+        RMSE                                & $0.6856$ & $0.7438$ \\
+        Average relative ratio              & $1.8740$ & $1.7270$ \\
+        Standard deviation ratio            & $0.5740$ & $0.5370$ \\
+        Prompt features importance [\%]     & $40.23$  & $8.92$   \\
+        \quad Prompt length importance [\%] & $5.51$   & $2.37$   \\
+        Prompt embedding importance [\%]    & $57.21$  & $84.10$  \\
+        LLM embedding importance [\%]       & $2.56$   & $6.98$   \\
+        LLM ID importance [\%]              & $0.00$   & $0.00$   \\
+        \bottomrule
+    \end{tabular}
+    \label{table:gb-length-prediction-results}
+\end{table}
 
 \begin{figure}[!h]
     \centering
@@ -1788,13 +1924,42 @@ Additional metrics were introduced as an extensions of the set described in sect
 
 \subsubsection{Results}
 
-DNN model results are presented on figures \ref{figure:dn-embedding-length-prediction-metrics-lmarena} and \ref{figure:dn-embedding-length-prediction-metrics-chatbot-arena}. On \textit{LMArena}, the model reaches $47.61 \%$ accuracy after 12 epochs (RMSE equal to $0.6854$ and MAE of $169.99$). On \textit{Chatbot Arena}, accuracy values reach $48.01 \%$ after 13 epochs (RMSE reaches $0.7409$ and MAE equals $70.02$).
+DNN model results are presented on figures \ref{figure:dn-embedding-length-prediction-metrics-lmarena} and \ref{figure:dn-embedding-length-prediction-metrics-chatbot-arena}. On \textit{LMArena}, the model reaches $47.61 \%$ accuracy after 12 epochs (RMSE equal to $0.6854$ and MAE of $169.99$). On \textit{Chatbot Arena}, accuracy values reach $48.01 \%$ after 13 epochs (RMSE reaches $0.7409$ and MAE equals $70.02$). Post-training metrics are presented in table \ref{table:dn-length-prediction-results}.
 
 Both models reach accuracy maximum quite quickly, after which they overfit. Still, achieved accuracy is better than in case of gradient boosting models. Interestingly, RMSE values did not improve. As accuracy is derived from average relative error, which exhibits linear behavior, the accuracy improvement likely is caused by better predictions for samples where predictions were already good.
 
 The model tends to overestimate the length of the response, and its predictions have lower variance than the training set. This behavior is very similar to gradient boosting models described in previous section.
 
 The model behaves quite chaotically, as seen on all plots. Metric values change rapidly between subsequent epochs. This suggests that learning rate may be too high. However, lower learning rate results in significantly smaller peak accuracy - overfitting begins earlier (after correcting for slower changes), causing validation accuracy to stop growing at earlier point. Reducing the learning rate from $0.005$ to $0.001$ and $0.0005$ results in accuracies of $47.43 \%$ and $43.75 \%$ on \textit{LMArena}, and $46.70 \%$ and $45.52 \%$ on \textit{Chatbot Arena}.
+
+Gradient attribution values show a quite different relationship between input components than total gain fractions recorded for gradient boosting model. Scalar prompt features dominate gradient attribution, while prompt embedding and LLM embedding vectors have similar values. This might be explained by scalar features being the most important for DNN models, which would be mostly consistent with the relationship between total gain fractions for gradient boosting models. It's also possible, though, that input components simply behave differently. This explanation is especially probable for LLM embedding vectors - during training, only a handful of different values are observed (equal to the number of LLM models in training dataset). It's also possible that the model instead relies on LLM IDs - gradient attribution was not computed for this input component, since it's not a continuous quantity, but an integer value.
+
+On \textit{LMArena} dataset, the highest gradient attribution was recorded for the prompt word count feature ($8.58 \%$). Among features not directly related to prompt length, the most important was formal domain score ($4.13 \%$). \textit{Chatbot Arena} model also recorded the highest gradient attribution for prompt word count ($4.89 \%$). The second highest gradient attribution value was assigned to academic domain score ($4.47 \%$).  
+
+\begin{table}[h]
+    \centering
+    \caption{DNN length prediction model results}
+    \begin{tabular}{
+    >{\raggedright\arraybackslash}p{0.4\linewidth}
+    >{\centering\arraybackslash}p{0.2\linewidth}
+    >{\centering\arraybackslash}p{0.2\linewidth}
+    }
+        \toprule
+        & \textit{LMArena} & \textit{Chatbot Arena} \\
+        \midrule
+        Accuracy [\%]                           & $47.61$  & $48.01$  \\
+        MAE                                     & $169.99$ & $72.13$  \\
+        RMSE                                    & $0.6854$ & $0.7573$ \\
+        Average relative ratio                  & $1.6320$ & $1.4950$ \\
+        Standard deviation ratio                & $0.6350$ & $0.4670$ \\
+        Prompt features gradient attr. [\%]     & $98.57$  & $99.55$  \\
+        \quad Prompt length gradient attr. [\%] & $5.08$   & $3.44$   \\
+        Prompt embedding gradient attr. [\%]    & $0.79$   & $0.15$   \\
+        LLM embedding gradient attr. [\%]       & $0.66$   & $0.31$   \\
+        \bottomrule
+    \end{tabular}
+    \label{table:dn-length-prediction-results}
+\end{table}
 
 \begin{figure}[!h]
     \centering
