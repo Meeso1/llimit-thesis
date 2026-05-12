@@ -279,7 +279,6 @@ The goal of this work is the implementation of an agentic system which addresses
 Partial problems that the system solves are addressed in a number of works and solutions, both open and commercial. Task execution planning that relies on a dynamic list of steps is used by numerous, if not most, agentic systems. Agentic code editors, like \textit{Cursor} \cite{cursor2024}, either implicitly rely on this approach to complete complex user requests, or are able to use it conditionally. Computer use agents, like \textit{Simular's} \textit{Agent S2} \cite{agashe2025agents2}, often use step-based planning as a foundation of their operations. 
 
 Dynamic selection of LLM models is researched by a range of works, albeit this problem is usually less critical than dynamic planning for most systems, since often usage of a single LLM model is sufficient for a specific kind of operation that a given solution needs to perform. I.~Ong et al. in \textit{RouteLLM: Learning to Route LLMs with Preference Data} \cite{ong2025routellm} paper focus on routing prompts between two groups of LLMs - weaker but cheaper, and more expensive but stronger models - with the purpose of reducing average response cost while minimizing quality reduction. \textit{RoRF: Routing on Random Forests} blog post by \textit{Not Diamond} \cite{notdiamond2024rorf} describes a simpler variant of the same problem, using random forests to route prompts between pairs of LLMs. 
-% TODO(maybe): 1 more example?.
 
 \section{Cursor}
 
@@ -803,8 +802,6 @@ Transformation is applied after scaling. Softplus operation is applied to origin
 
 Distributions of example features before and after transformations are displayed on figures \ref{figure:character-count-distribution}, \ref{figure:inverse-token-type-ratio-distribution} and \ref{figure:science-domain-score-distribution}.
 
-% TODO(maybe): Maybe add information about which features are logarithmic etc. somewhere
-
 \begin{figure}[h]
     \centering
     \includegraphics[width=\textwidth]{thesis/plots/character-count.png}
@@ -1109,6 +1106,10 @@ The model is trained using a supervised contrastive loss, given by equation \ref
 
 $P(i)$ represents all embeddings in a batch computed from samples from the same model. $f$ represents embedding computation. $\tau$ is a configurable temperature parameter.
 
+\subsubsection{Training Configuration}
+
+Pair encoder consists of 12 layers of size 1024. Set aggregator contains 4 attention heads of dimension 64. \textit{AdamW} optimizer was used (described in section \ref{section:adamw}), with a learning rate of $1 \times 10^{-4}$ and exponential decay coefficient of $0.995$.
+
 \subsubsection{Results}
 
 Results of attention model training on each dataset are presented on figures \ref{figure:attention-embedding-results-lmarena} and \ref{figure:attention-embedding-results-chatbot-arena}. On \textit{LMArena}, the model achieves $82.86 \%$ distinguishability accuracy after 312 epochs. On \textit{Chatbot Arena}, $80.00 \%$ accuracy is achieved after 271 epochs.
@@ -1179,6 +1180,7 @@ Model architecture is presented on diagram \ref{figure:dn-scoring-arch}. Number 
 The score assignment goal that the network tries to achieve does not inherently require any specific scale of outputs. As scores are only ever used for comparison, transforming them through any strictly increasing function does not change the quality of the result - for each compared pair of models, bigger score will still be bigger after the transformation. This ambiguity is undesired and impractical from human perspective. Introducing a secondary training objective could be a solution to this problem, however it is unnecessary in this case. Instead of introducing an additional loss term, whose influence may negatively impact the primary objective, score post-processing was introduced. After training, mean and standard deviation of scores assigned to training data is computed, such that subsequent inference results can be normalized to mean 0 and standard deviation equal to 1. Additionally, scaled scores are transformed using a hyperbolic tangent function onto a $(-1, 1)$ range.
 
 \subsubsection{\textit{AdamW}}
+\label{section:adamw}
 
 \textit{AdamW} optimizer was used during training process. Described by Loshchilov et al. in \textit{Decoupled Weight Decay Regularization} paper \cite{loshchilov2019adamw}, it improves the previous \textit{Adam} algorithm (Kingma et al., \textit{Adam: A Method for Stochastic Optimization} \cite{kingma2015adam}) by decoupling weight decay from gradient update step. In \textit{Adam}, L2 regularization is essentially implemented by altering the effective loss criterion which is being minimized. \textit{AdamW} implements weight decay during weight update step instead, as described by equation \ref{equation:adamw-weight-update}. 
 
@@ -1258,6 +1260,15 @@ The following sensitivity metrics were implemented:
 
 Each metric is computed separately on training and validation sets.
 
+\subsubsection{Training Configuration}
+\label{section:dnn-training-config}
+
+Detailed training configurations for all models described in this work can be found in aforementioned \textit{GitHub} repository.
+
+The model consists of 9 layers of size 1024. Input components were projected to $64$ dimensions. Dropout fraction was set to $0.4$. \textit{Muon} (described in section \ref{section:muon}) optimizer was used, with a learning rate of $5 \times 10^{-4}$ and exponential decay rate of $0.99$. For non-matrix parameters, \textit{AdamW} optimizer was used, with a learning rate of $2 \times 10^{-5}$.
+
+Configuration parameters were chosen manually. While a more sophisticated hyperparameter optimization methods could be implemented, observed model results (described later) showed that configuration tuning is of secondary importance - scoring models seem to reach a very similar local optimum regardless of architecture or hyperparameter values.
+
 \subsubsection{Results}
 
 DNN model results are presented on figures \ref{figure:dnn-scoring-results-lmarena} and \ref{figure:dnn-scoring-results-chatbot-arena}. On \textit{LMArena}, model reaches $62.61 \%$ accuracy after 80 training epochs. On \textit{Chatbot Arena}, $75.64 \%$ is reached after 33 epochs. Post-training sensitivity analysis results are shown in table \ref{table:dnn-scoring-results}.
@@ -1265,8 +1276,6 @@ DNN model results are presented on figures \ref{figure:dnn-scoring-results-lmare
 In both cases, improvement is marginal. Over the first 30 training epochs, training accuracy improves rapidly, with validation accuracy exhibiting a much slower growth. Afterwards, training accuracy continues improving at a slower pace, while validation accuracy stalls, and eventually starts to decrease slowly. Input projection variances show that while prompt embedding vectors are essentially ignored, scalar prompt feature projections have a similar norm and variance to LLM embeddings. Initially, the model seems to learn to mostly rely on LLM embeddings to learn optimal prompt-invariant scores. Then, it begins discovering certain relationships between the prompt and assigned score - this can be seen on score variance decomposition plot. However, these relationships don't seem to translate to validation set well. While a small fraction of them might be responsible for a small improvement in accuracy over prompt-invariant models, the difference between training and validation accuracy clearly state that a vast majority of patterns learned by the model in later stages are simply random artifacts of dataset split.
 
 Inspection of model sensitivity (computed on validation set) gives additional insight into model behavior. In case of \textit{Chatbot Arena} dataset, we can conclude that the model did not learn any useful relationships between prompt data and assigned score - random permutation of prompt data achieves a better (although only by $0.02 \%$) accuracy. Setting prompt embedding vectors to their mean does reduce the accuracy slightly, but the magnitude of this reduction is similar to the improvement observed for other sensitivity tests, the value can be explained by random noise. In case of \textit{LMArena}, sensitivities are small but positive. Shuffling prompt information causes accuracy reduction of $1.33 \%$. The most impactful scalar features are prompt character count ($0.43 \%$ reduction) and inverse type-token ratio ($0.34 \%$).
-
-% TODO(maybe): Ablation study - change 1 parameter in used config and check how accuracy changes
 
 \begin{table}[h]
     \centering
@@ -1333,9 +1342,11 @@ To monitor learning process of the gradient boosting model, the following metric
     \end{equation}
 \end{itemize}
 
-\subsubsection{Results}
+\subsubsection{Training Configuration}
 
-% TODO(write): training configurations - where to put them? In model sections? In some apprendix? Just refer to the repo?
+Learning rate was set to $0.1$. A sample of $80 \%$ columns was used for each estimator, with max tree depth equal to $5$.
+
+\subsubsection{Results}
 
 Training results on each dataset are presented on figures \ref{figure:gradient-boosting-scoring-results-lmarena} and \ref{figure:gradient-boosting-scoring-results-chatbot-arena}. Post-training metrics are shown in table \ref{table:gradient-boosting-scoring-results}.
 
@@ -1394,7 +1405,6 @@ The same loss functions were implemented as in previously described models (in s
 \subsubsection{Fine-tuning Methods}
 \label{section:transformer-embedding-fine-tuning}
 
-% TODO(maybe): something more
 A number of fine-tuning methods were implemented. Initially, the easiest approach involved simply unfreezing $n$ final layers of the model. This turned out to produce terrible results, while also not reducing the number of trainable parameters enough. \textit{LoRA} and \textit{QLoRA} methods were implemented as alternatives. The main idea behind \textit{LoRA} (or \textit{Low Rank Adaptation}), described by Hu et al. in \textit{LoRA: Low-Rank Adaptation of Large Language Models} paper \cite{hu2022lora}, is the introduction of a smaller number of new, trainable parameters, while keeping original model weights frozen. Effective, altered model weights are computed according to equation \ref{eq:lora}, where $r$ is a configurable rank of the transformation.
 
 \begin{align}
@@ -1435,6 +1445,7 @@ The same diagnostic metrics were introduced as in dense network model. As fine-t
 Additionally, a new metric was introduced: module gradient norms. While dense network model consists of a single main component (dense network) and input projection layers, there are two high-parameter, trainable modules in transformer model - the actual sentence transformer being fine-tuned, and scoring head (dense network). By computing and recording norms of gradients of parameters of each module, it's possible to validate that both keep learning. For example, if the model learns to rely only on LLM embeddings, ignoring prompt information, transformer module gradient norms will significantly decrease relatively to scoring head gradient norms.
 
 \subsubsection{\textit{Muon} optimizer}
+\label{section:muon}
 
 Instead of \textit{AdamW} optimizer, which was used for dense network model training, transformer model uses \textit{Muon} optimizer. Introduced by Jordan et al. in an article titled \textit{Muon: An Optimizer for Hidden Layers in Neural Networks} \cite{jordan2024muon}, and later evaluated in context of LLM training by Liu et al. in \textit{Muon is Scalable for LLM Training} paper \cite{liu2025muonscalable}, \textit{Muon} changes how momentum influences weight updates. While \textit{AdamW} only uses element-wise operations to update weights, \textit{Muon} exploits the matrix structure of most network parameters.  
 
@@ -1464,6 +1475,10 @@ Orthogonalization is performed using Newton-Schulz iterative method. It is an ap
 \ENDFOR
 \end{algorithmic}
 \end{algorithm}
+
+\subsubsection{Training Configuration}
+
+Finetuning was performed using \textit{QLoRA} method, with 4-bit quantization, and rank and $\alpha$ equal to $32$. The scoring head consists of 4 layers with sizes 1024, 512, 256 and 128. Dropout fraction was set to $0.2$. \textit{Muon} optimizer was used, with a learning rate of $5 \times 10^{-3}$ and exponential decay rate of $0.99$. For non-matrix parameters, \textit{AdamW} optimizer was used, with a learning rate of $5 \times 10^{-5}$.
 
 \subsubsection{Results}
 
@@ -1565,7 +1580,7 @@ Second criterion encodes prediction accuracy. It encourages predictor module to 
     \end{cases} 
 \end{equation}
 
-Predictor loss component is additionally weighted by function $w(n) = \max(1, \frac{n}{n_w})$, where $n$ is the current epoch number. At the beginning of training, response representations produced by predictor module are highly random. There's no point in training response encoder to produce outputs that are similar to such random noise. $w(n)$ gradually ramps up the importance of that loss criterion as training progresses and predictor starts learning. 
+Predictor loss component is additionally weighted by function $w(n) = \min(1, \frac{n}{n_w})$, where $n$ is the current epoch number. At the beginning of training, response representations produced by predictor module are highly random. There's no point in training response encoder to produce outputs that are similar to such random noise. $w(n)$ gradually ramps up the importance of that loss criterion as training progresses and predictor starts learning. 
 
 Fourth criterion is given by equation \ref{equation:kl-anchor-loss}. It is a KL loss \cite{kingma2014vae} term, encouraging a normalized distribution of response embeddings. In particular, this prevents initial representation collapse to a single value - it is a trivially optimal solution to the second and third loss criterion.
 
@@ -1588,6 +1603,20 @@ Last criterion is given by equation \ref{equation:distribution-loss}. It is a su
     \text{KL}\bigl(\mathcal{N}(\mu_1,\sigma_1^2)|\mathcal{N}(\mu_2,\sigma_2^2)\bigr) & = \frac{1}{2}\left(\frac{\sigma_1^2}{\sigma_2^2} + \frac{(\mu_1-\mu_2)^2}{\sigma_2^2} - 1 + \ln\frac{\sigma_2^2}{\sigma_1^2}\right) \\
     \mathcal{L}_\text{dist} & = \frac{1}{d_r} \sum_{i=1}^{d_r} \frac{\text{KL}(\hat p_j | p_j)+\text{KL}(p_j| \hat p_j)}{2}
 \end{align}
+
+\subsubsection{Training Configuration}
+
+The encoder consists of 4 layers with sizes 1024, 512, 256 and 128. The predictor and scorer use 9 layers of size 512. Input components were projected to 128 dimensions. Dropout fraction was set to $0.4$. \textit{Muon} optimizer was used, with a learning rate of $5 \times 10^{-3}$, exponential decay rate of $0.99$, and momentum coefficient of $0.9$. For non-matrix parameters, \textit{AdamW} optimizer was used, with a learning rate of $1 \times 10^{-4}$.
+
+The following loss component weights were chosen:
+
+\begin{itemize}
+    \item $k_\text{pred} = 0.2$
+    \item $k_\text{repr} = 0.2$
+    \item $k_\text{anchor} = 0.01$
+    \item $k_\text{consistency} = 0.5$
+    \item $k_\text{dist} = 0.05$
+\end{itemize}
 
 \subsubsection{Results}
 
@@ -1661,9 +1690,13 @@ In the LLM scoring task, multi-stage models can be especially useful when a prom
 
 An additional advantage of multi-stage approach is faster training. Complex models may take multiple epochs before reaching the optimal prompt-invariant accuracy. If a prompt-invariant model is used as a base, however, optimal prompt-invariant accuracy is the starting point.
 
+\subsubsection{Training Configuration}
+
+Multistage approach was tested using prompt-invariant gradient boosting model as base stage, and DNN model as secondary. DNN model configuration was the same as described in section \ref{section:dnn-training-config}.
+
 \subsubsection{Results}
 
-Multistage approach was tested using prompt-invariant gradient boosting model as base stage, and DNN model as secondary. Results are presented on figures \ref{figure:dnn-multistage-results-lmarena} and \ref{figure:dnn-multistage-results-chatbot-arena}. On \textit{LMArena}, multistage model achieved $62.53 \%$ accuracy after 27 epochs. On \textit{Chatbot Arena}, $75.34 \%$ was achieved after 23 epochs. Sensitivity analysis results are presented in table \ref{table:dnn-multistage-results}.
+Results are presented on figures \ref{figure:dnn-multistage-results-lmarena} and \ref{figure:dnn-multistage-results-chatbot-arena}. On \textit{LMArena}, multistage model achieved $62.53 \%$ accuracy after 27 epochs. On \textit{Chatbot Arena}, $75.34 \%$ was achieved after 23 epochs. Sensitivity analysis results are presented in table \ref{table:dnn-multistage-results}.
 
 Plots look similar to their counterparts describing the variant without the base model. Expectedly, the main difference is a much shorter and less steep initial learning period, during which training and validation accuracy rise together to the baseline level - the baseline is the starting point in this case.
 
@@ -1845,6 +1878,10 @@ In addition to metrics described in section \ref{section:length-prediction-metri
     \item \textbf{Total feature gain improvement:} Cumulative sum of gains over tree nodes that consider given input component or scalar feature in the split.
 \end{itemize}
 
+\subsubsection{Training Configuration}
+
+Learning rate was set to $0.1$. $80 \%$ of columns and $80 \%$ of samples were used for each estimator, with max tree depth equal to $5$.
+
 \subsubsection{Results}
 
 Gradient boosting model results are presented on figures \ref{figure:gb-length-prediction-metrics-lmarena} and \ref{figure:gb-length-prediction-metrics-chatbot-arena}. On \textit{LMArena}, the model reaches $41.05 \%$ accuracy after 500 epochs (with relative mean squared error equal to $0.6856$ and mean average error of $175.13$). On \textit{Chatbot Arena}, accuracy values reach $43.79 \%$ after 499 epochs (RMSE reaches $0.7438$ and MAE equals $70.20$). Post-training metrics are shown in table \ref{table:gb-length-prediction-results}.
@@ -1921,6 +1958,10 @@ Additional metrics were introduced as an extensions of the set described in sect
     \item \textbf{Module gradient norms:} Gradient magnitudes are tracked for every component.
     \item \textbf{Input gradient attribution:} Dot product of input component gradients and input values is used to measure importance of each input value.
 \end{itemize}
+
+\subsubsection{Training Configuration}
+
+The model consists of 9 layers of size 1024. Input components were projected to $64$ dimensions. Dropout fraction was set to $0.2$. \textit{Muon} optimizer was used, with a learning rate of $5 \times 10^{-3}$ and exponential decay rate of $0.995$. For non-matrix parameters, \textit{AdamW} optimizer was used, with a learning rate of $1 \times 10^{-4}$.
 
 \subsubsection{Results}
 
@@ -2267,16 +2308,6 @@ The scoring component needs further improvements the most, however, the directio
 % -----------------------------  LIST OF TABLES --------------------------------
 \renewcommand{\listtablename}{Spis tabel}
 \listoftables
-\thispagestyle{empty}
-
-% -----------------------------  LIST OF APPENDICES ---------------------------
-\chapter*{List of appendices}
-% TODO(review)
-\begin{enumerate}
-\item Appendix 1
-\item Appendix 2
-\item In case of no appendices, delete this part.
-\end{enumerate}
 \thispagestyle{empty}
 
 
