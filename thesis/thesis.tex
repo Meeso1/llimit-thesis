@@ -1012,6 +1012,10 @@ Model was trained using triplet margin loss \cite{schroff2015facenet}, given by 
 
 Additionally, KL loss \cite{kingma2014vae} was introduced to encourage sample embeddings to follow a normal distribution.
 
+\subsubsection{Training Configuration}
+
+The model consists of 7 layers of size 1024. Dropout fraction was set to $0.1$. \textit{AdamW} optimizer was used, with a learning rate of $1 \times 10^{-4}$ and exponential decay rate of $0.995$. The margin value for triplet margin loss was set to $0.2$. KL loss coefficient was set to $0.01$.
+
 \subsubsection{Results}
 
 Results of model training on each dataset are presented on figures \ref{figure:frozen-embedding-results-lmarena} and \ref{figure:frozen-embedding-results-chatbot-arena}. 
@@ -1039,6 +1043,10 @@ Text embedding vectors used by DNN embedding model are generated using a pre-tra
 Tuning-based embedding model does just that. To ensure that embedding dimension is configurable and does not depend on the choice of transformer model, projection layer was added. The same loss criterion was used as in previous approach - triplet margin and KL loss.
 
 As a full fine-tuning is an expensive process, \textit{QLoRA} was implemented to shorten the process without a significant loss of quality. It is described, along with other fine-tuning methods, in section \ref{section:transformer-embedding-fine-tuning}.
+
+\subsubsection{Training Configuration}
+
+\textit{QLoRA} method was used to finetune the model, with 4-bit quantization, rank equal to 32, and $\alpha$ equal to 32. Dropout fraction was set to $0.1$. \textit{AdamW} optimizer was used, with a learning rate of $1 \times 10^{-4}$ and exponential decay rate of $0.995$. The margin value for triplet margin loss was set to $0.2$. KL loss coefficient was set to $0.01$.
 
 \subsubsection{Results}
 
@@ -1170,7 +1178,7 @@ Three distinct input vectors don't have to share any characteristics, like dimen
 
 Model architecture is presented on diagram \ref{figure:dn-scoring-arch}. Number and sizes of hidden layers are configurable. \textit{LeakyReLU} was chosen as the activation function, with negative slope set to $0.1$. Dropout layers were introduced between each pair of hidden layers to prevent overfitting. Additionally, \textit{LayerNorm} layers were introduced for regularization, and gradient clipping was implemented to prevent gradient explosions during training.
 
-\begin{figure}[h]
+\begin{figure}[!h]
     \centering
     \includegraphics[width=0.8\textwidth]{thesis/diagrams/dn-scoring.drawio.png}
     \caption{DNN model architecture}
@@ -1417,7 +1425,7 @@ A number of fine-tuning methods were implemented. Initially, the easiest approac
 
 \textit{QLoRA} \cite{dettmers2023qlora} extends \textit{LoRA} method by also introducing model weight quantization. By default, transformer models usually use 16-bit floating point numbers as weights. QLoRA performs 8-bit quantization, followed by a 4-bit quantization using \textit{NormalFloat4} technique \cite{dettmers2023qlora}. \textit{NormalFloat4} encoding is a theoretically optimal way of encoding normally distributed values. While there is no theoretical reason to expect network weights to be normally distributed (although, perhaps, an argument could be made that this expectation is justified by the Central Limit Theorem, treating individual weight updates as random variables), this quantization method does seem effective in practice \cite{dettmers2023qlora}. Only the original model weights are quantized - new, trainable parameters from LoRA matrices retain their full, 16-bit representation. In addition to quantization, QLoRA also implements optimizer state pagination. To avoid out-of-memory issues during training, optimizer parameters (momentum, cache, etc.) that are not in active use are transferred to CPU memory. This results in a time overhead caused by numerous data transfers between GPU and CPU memory, but allows training larger models on a given architecture. The comparison of \textit{QLoRA} and other described fine-tuning is shown on figure \ref{fig:fine-tuning-methods-comparison}.
 
-\begin{figure}[h]
+\begin{figure}[!h]
     \centering
     \includegraphics[width=0.7\textwidth]{thesis/diagrams/fine-tuning-metods.png}
     \caption{Fine-tuning methods comparison\\
