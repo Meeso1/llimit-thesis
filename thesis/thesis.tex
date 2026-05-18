@@ -431,7 +431,7 @@ The implementation of the system was preceded by defining a set of requirements 
     The system is designed to complete complex, multi-step tasks that require web search and file handling. Breaking tasks down into steps allows the system to choose the most suitable LLM for each task, improving the overall quality of the result and reducing costs.
     \item \textbf{The system should be able to use a wide variety of LLMs from different providers to complete task steps.} 
     
-    There are numerous LLM providers, each offering a range of models. Models differ both in "intelligence" (providers usually offer smaller and cheaper models, recommended for simple prompts, and bigger, more expensive models for complex tasks) and in domain-specific strengths. As the main idea behind the system is utilization of these differences, wide selection of LLMs that can be used for step completion is critical.
+    There are numerous LLM providers, each offering a range of models. Models differ both in ``intelligence'' (providers usually offer smaller and cheaper models, recommended for simple prompts, and bigger, more expensive models for complex tasks) and in domain-specific strengths. As the main idea behind the system is utilization of these differences, wide selection of LLMs that can be used for step completion is critical.
     \item \textbf{The system should handle step execution errors gracefully, continuing task completion if possible.} \\
     The problem that the system is meant to solve is open-ended. In principle, user-requested tasks might be impossible to complete. This problem is described in greater detail in section \ref{section:error-recovery}. This property, together with relatively low reliability (at least in comparison to deterministic algorithmic approaches) of generating structured data using LLMs, makes error handling a critical aspect of the system.
     \item \textbf{The choice of step completion LLMs should be based on estimated request cost and predicted quality of the response.} 
@@ -450,7 +450,7 @@ The implementation of the system was preceded by defining a set of requirements 
 
 \begin{enumerate}
     \item \textbf{The system will use a single configured LLM model for task planning.} \\
-    Different tasks may require different levels of "intelligence" for generating a list of steps. Similarly, plan reevaluation during error recovery may also vary in complexity. While estimating that complexity and choosing an LLM based on this estimation would be an interesting extension of the project, it was rejected due to excessive complexity and a lack of suitable datasets. Instead, the LLM model used for initial planning and reevaluation is configurable  and set to \textit{Google's} \textit{Gemini 3.1 Pro} \cite{google2026gemini31pro}.
+    Different tasks may require different levels of ``intelligence'' for generating a list of steps. Similarly, plan reevaluation during error recovery may also vary in complexity. While estimating that complexity and choosing an LLM based on this estimation would be an interesting extension of the project, it was rejected due to excessive complexity and a lack of suitable datasets. Instead, the LLM model used for initial planning and reevaluation is configurable  and set to \textit{Google's} \textit{Gemini 3.1 Pro} \cite{google2026gemini31pro}.
     \item \textbf{The system will only complete tasks by generating a text result.} \\
     LLMs (and adjacent models offered by the same providers) can handle a variety of tasks aside from text generation. They can generate images, execute code, and perform actions on the web or in the operating system, etc. Supporting these abilities would definitely be a welcome addition to the system. However, this would considerably increase implementation complexity and was rejected. 
     \item \textbf{When selecting an LLM to complete a step, the system will only consider estimated completion cost and predicted response quality.} \\
@@ -463,7 +463,7 @@ The implementation of the system was preceded by defining a set of requirements 
 
 As described in the introduction, the project is motivated by the implementation of an LLM task completion system. While this goal is deeply practical, without a singular research topic encapsulating the entire work, requirements specified in section \ref{section:requirements} do imply a set of problems that can be explored.
 
-The central research problem of the project is the exploration of LLM response quality prediction. A similar question is explored by referenced works -- in particular, \textit{RouteLLM} paper \cite{ong2025routellm} and \textit{Routing on Random Forests} article \cite{notdiamond2024rorf}. However, while these works research the effectiveness of routing queries between a single pair of LLMs models which differ in level of "intelligence" (for example, different-sized variants offered by a single provider), this work instead focuses on assigning a response quality score based on the selected LLM model and provided prompt, making it possible to compare any pair of LLMs. It is an extension of the routing problem addressed by these works. The effectiveness of machine learning models implemented for that purpose will be measured by the accuracy they obtain over the \textit{LMArena} comparison dataset (described in section \ref{section:dataset-selection}).
+The central research problem of the project is the exploration of LLM response quality prediction. A similar question is explored by referenced works -- in particular, \textit{RouteLLM} paper \cite{ong2025routellm} and \textit{Routing on Random Forests} article \cite{notdiamond2024rorf}. However, while these works research the effectiveness of routing queries between a single pair of LLMs models which differ in level of ``intelligence'' (for example, different-sized variants offered by a single provider), this work instead focuses on assigning a response quality score based on the selected LLM model and provided prompt, making it possible to compare any pair of LLMs. It is an extension of the routing problem addressed by these works. The effectiveness of machine learning models implemented for that purpose will be measured by the accuracy they obtain over the \textit{LMArena} comparison dataset (described in section \ref{section:dataset-selection}).
 
 The second research question of the project stems from requirements related to the extendability of the response quality prediction component. As motivated in section \ref{section:requirements}, relying on human-annotated comparison data to extend the quality prediction models to new LLMs is not practical. To ensure that such an extension requires only a set of prompt and response pairs from a new LLM model, embedding models are introduced -- they produce embedding vectors representing LLM models based only on their response data. This topic is closely related to LLM fingerprinting: the problem of recognizing an LLM model based on a small sample of its responses. The LLM embedding mechanism has two main purposes: ensuring distinguishability between models, so that a subset of responses produced by a given LLM is likely to be correctly recognized, and usefulness in response quality prediction. The first quality will be measured by a special distinguishability metric, defined in section \ref{section:llm-embedding}, while the second quality will be verified by extending a trained quality prediction component to an unseen LLM model and measuring it's accuracy over new comparison pairs.
 
@@ -531,7 +531,7 @@ Requested output specifies a number of constraints that LLM response must satisf
 
 \subsubsection{LLM Capabilities}
 
-Different LLMs support different mechanisms and options -- some allow image input, others implement native web search, etc. Those "hard" capabilities of models may be crucial for completion of certain steps, so they can be specified in step definition by planning model. Often, those capabilities serve as filters -- if a step requires certain mechanisms or input modalities, LLMs that don't implement them cannot be used to complete that step. That's not always the case, though. \textit{OpenRouter} implements a range of simple options available regardless of requested model, which can serve as replacements for mechanisms that are not supported by a given LLM. These include PDF processing options, prompt-based web search, etc. If such capabilities are required by step definition, they don't cause any models to be filtered out, but instead cause a specific option to be included in the request, specifying usage of a certain mechanism.
+Different LLMs support different mechanisms and options -- some allow image input, others implement native web search, etc. Those ``hard'' capabilities of models may be crucial for completion of certain steps, so they can be specified in step definition by planning model. Often, those capabilities serve as filters -- if a step requires certain mechanisms or input modalities, LLMs that don't implement them cannot be used to complete that step. That's not always the case, though. \textit{OpenRouter} implements a range of simple options available regardless of requested model, which can serve as replacements for mechanisms that are not supported by a given LLM. These include PDF processing options, prompt-based web search, etc. If such capabilities are required by step definition, they don't cause any models to be filtered out, but instead cause a specific option to be included in the request, specifying usage of a certain mechanism.
 
 The following capabilities are implemented:
 
@@ -589,7 +589,7 @@ The system exposes an SSE endpoint at \texttt{/sse/events}. Events are produced 
 
 LLM-based operations require relatively extensible error handling. First, regardless of format schemas and specifications, LLM output should be treated as text, which may or may not satisfy the requested constraints. Failed format validation during step execution causes the step to fail, triggering a reevaluation step. 
 
-Second, the LLM may simply be unable to complete a step. Steps, just like tasks, aren't constrained in any way and may specify problems that are extremely hard to solve or that don't make sense after acquiring certain information from the previous step's output or file contents. A plan for a certain mathematical task may contain a step requiring a proof of the Riemann Hypothesis. The image recognition task may specify a step requiring a model to determine the scientific name of the highest tree in an attached photo, while the photo does not contain any trees. To solve this problem, the step output schema specifies a "failure reason" field, and the LLM that executes the step is instructed to use it if the step cannot be completed to specify the problem that prevented successful step completion. A failed step subsequently causes a reevaluation to be performed. the reevaluation prompt contains the failure reason, making it possible to plan subsequent steps in a way that solves the problem.
+Second, the LLM may simply be unable to complete a step. Steps, just like tasks, aren't constrained in any way and may specify problems that are extremely hard to solve or that don't make sense after acquiring certain information from the previous step's output or file contents. A plan for a certain mathematical task may contain a step requiring a proof of the Riemann Hypothesis. The image recognition task may specify a step requiring a model to determine the scientific name of the highest tree in an attached photo, while the photo does not contain any trees. To solve this problem, the step output schema specifies a ``failure reason'' field, and the LLM that executes the step is instructed to use it if the step cannot be completed to specify the problem that prevented successful step completion. A failed step subsequently causes a reevaluation to be performed. the reevaluation prompt contains the failure reason, making it possible to plan subsequent steps in a way that solves the problem.
 
 \section{LLM Selection}
 \label{section:llm-selection}
@@ -691,7 +691,7 @@ The title of the most popular human-evaluated LLM preference dataset without a d
 
 However, there is a crucial issue: published in 2023, \textit{Chatbot Arena Conversations} dataset only includes comparisons between rather old LLM models. This isn't a disqualifying problem, as the work doesn't focus on particular LLM models. Though, a decision to use this dataset would require two important implications: that human preference during evaluation of a pair of responses remains unchanged, and that the general distribution of responses produced by LLMs is similar.
 
-It's hard to evaluate how close to the truth the first assumption is. While human preferences likely did not change drastically over the last four years, expectations of what LLMs should be able to do did undergo an undeniable change, simply due to their capabilities increasing. Another significant difference may be caused by a wider adoption -- people whose responses were used in \textit{Chatbot Arena Conversations} dataset belonged to a significantly narrower group of "early adopters" of LLM technology, compared to a group of LLM users today.
+It's hard to evaluate how close to the truth the first assumption is. While human preferences likely did not change drastically over the last four years, expectations of what LLMs should be able to do did undergo an undeniable change, simply due to their capabilities increasing. Another significant difference may be caused by a wider adoption -- people whose responses were used in \textit{Chatbot Arena Conversations} dataset belonged to a significantly narrower group of ``early adopters'' of LLM technology, compared to a group of LLM users today.
 
 These reasons prompted a decision to rely on a newer alternative to \textit{Chatbot Arena Conversations} dataset. Collected and released by the same organization (\textit{LMSYS}), \textit{LMArena Human Preference} \cite{lmsys2024lmarena} is a successor of aforementioned dataset. It's structure closely resembled \textit{Chatbot Arena Conversations}, also including human comparison results over a pair of LLM responses to the same prompt. \textit{LMArena Human Preference} is also an improvement in terms of size. It contains around 140 thousand comparison pairs (compared to \textit{Chatbot Arena Conversations}'s 33 thousand), and includes responses from 53 different models (compared to \textit{Chatbot Arena Conversations}'s 20).
 
@@ -717,13 +717,13 @@ The following 8 features encoding prompt complexity were defined:
     \item \textbf{Average word length};
     \item \textbf{Question density} -- Number of question marks in the prompt divided by prompt length;
     \item \textbf{Nesting density} -- Number of parentheses divided by prompt length;
-    \item \textbf{Multi-part indicator density} -- Number of words indicating multiple aspects/parts in the prompt ("and", "also", etc.) divided by prompt length;
+    \item \textbf{Multi-part indicator density} -- Number of words indicating multiple aspects/parts in the prompt (``and'', ``also'', etc.) divided by prompt length;
     \item \textbf{Inverse vocabulary richness ratio} -- $1 - \frac{\text{[number of unique words]}}{\text{[word count]}}$.
 \end{itemize}
 
 Features that don't directly encode prompt length were normalized by that length in order to reduce dependency between them -- for example, it's reasonable to assume that longer prompts will, on average, contain more parentheses and question marks than shorter prompts.
 
-The vocabulary richness ratio was inverted by subtracting its value from 1. This transformation was performed to make value distribution more similar to other features, which made it possible to unify its further processing with the softplus transformation described in section~\ref{section:preprocessing-and-features}. In an overwhelming majority of samples, nearly all words are different, causing vocabulary richness ratio to primarily take a value of 1 (or close to it). "Inverting" values causes them to instead be 0 (or close to it).
+The vocabulary richness ratio was inverted by subtracting its value from 1. This transformation was performed to make value distribution more similar to other features, which made it possible to unify its further processing with the softplus transformation described in section~\ref{section:preprocessing-and-features}. In an overwhelming majority of samples, nearly all words are different, causing vocabulary richness ratio to primarily take a value of 1 (or close to it). ``Inverting'' values causes them to instead be 0 (or close to it).
 
 \subsection{Domain Scores}
 
@@ -751,10 +751,10 @@ Each domain score was defined as a ratio of words related to that domain, to tot
 Six style features were defined:
 
 \begin{itemize}
-    \item \textbf{Informal marker density} -- Number of informal style indicators (like "btw", "tbh", etc.), divided by prompt length;
-    \item \textbf{Specificity marker density} -- Number of words indicating constraints and requirements (like "exactly", "must", etc.), divided by prompt length;
-    \item \textbf{Politeness marker density} -- Number of words indicating polite tone (like "please"), divided by prompt length;
-    \item \textbf{Urgency marker density} -- Number of words indicating urgency (like "quickly", "fast", etc.), divided by prompt length;
+    \item \textbf{Informal marker density} -- Number of informal style indicators (like ``btw'', ``tbh'', etc.), divided by prompt length;
+    \item \textbf{Specificity marker density} -- Number of words indicating constraints and requirements (like ``exactly'', ``must'', etc.), divided by prompt length;
+    \item \textbf{Politeness marker density} -- Number of words indicating polite tone (like ``please''), divided by prompt length;
+    \item \textbf{Urgency marker density} -- Number of words indicating urgency (like ``quickly'', ``fast'', etc.), divided by prompt length;
     \item \textbf{Starts with verb} -- Boolean feature indicating that first word of the prompt is a verb;
     \item \textbf{Is a question} -- Boolean feature indicating that the prompt ends with a question mark;
 \end{itemize}
@@ -855,7 +855,7 @@ This criterion can be equivalently formulated via a min-cost-max-flow problem.
 
 Then, node potentials can be interpreted as entry scores.
 
-The solution to min-cost-max-flow problem also gives us an additional useful metric: percentage of "meaningful" comparisons in the comparison set. Any cycle in the network has positive cost (since all edges that don't include source and sink have positive cost), so optimal flow won't use them. Using that information, we can compute the ratio of used comparison edges (equal to total cost) to all comparisons. This quantity can be interpreted as decisiveness of comparison set -- since comparison cycles can't be scored correctly, the more common they are, the less correct is it to represent LLM quality via a single, prompt-independent score.
+The solution to min-cost-max-flow problem also gives us an additional useful metric: percentage of ``meaningful'' comparisons in the comparison set. Any cycle in the network has positive cost (since all edges that don't include source and sink have positive cost), so optimal flow won't use them. Using that information, we can compute the ratio of used comparison edges (equal to total cost) to all comparisons. This quantity can be interpreted as decisiveness of comparison set -- since comparison cycles can't be scored correctly, the more common they are, the less correct is it to represent LLM quality via a single, prompt-independent score.
 
 \begin{table}[h]
     \centering
@@ -882,7 +882,7 @@ While this approach is not useful for scoring, even as baseline, it does provide
 
 \subsection{L2 Criterion}
 
-Minimizing squares of upset magnitudes turns out to be even simpler than minimizing their number -- it is a variation of "least squares" problem. Results of this approach are presented in table \ref{table:l2-model-results}.
+Minimizing squares of upset magnitudes turns out to be even simpler than minimizing their number -- it is a variation of ``least squares'' problem. Results of this approach are presented in table \ref{table:l2-model-results}.
 
 \begin{table}[h]
     \centering
@@ -906,7 +906,7 @@ Minimizing squares of upset magnitudes turns out to be even simpler than minimiz
     \label{table:l2-model-results}
 \end{table}
 
-The model achieves significantly better results than min-cost-max-flow approach. As such, its accuracy will be used as baseline for other models. A $12 \%$ gap in validation accuracy between datasets is noteworthy, confirming the distinction highlighted by L1 criterion results -- \textit{LMArena} dataset is less "decisive", with a significantly bigger fraction of comparisons not explainable just by model identity.
+The model achieves significantly better results than min-cost-max-flow approach. As such, its accuracy will be used as baseline for other models. A $12 \%$ gap in validation accuracy between datasets is noteworthy, confirming the distinction highlighted by L1 criterion results -- \textit{LMArena} dataset is less ``decisive'', with a significantly bigger fraction of comparisons not explainable just by model identity.
 
 \section{LLM Embedding}
 \label{section:llm-embedding}
@@ -1149,7 +1149,7 @@ Due to significantly better results than other variants, the attention embedding
 \subsection{Prompt-invariant Embedding-based Models}
 \label{section:prompt-invariant-embedding-based-models}
 
-While distinguishability metric should closely correlate with LLM embedding usefulness, it can be validated by implementing a prompt-invariant scoring model which uses LLM embeddings instead of IDs, contrary to models described in section \ref{section:prompt-invariant-scoring}. If LLM embeddings are good enough, any iterative model should easily be able to reach similar accuracy to optimal one achieved by "least squares" model.
+While distinguishability metric should closely correlate with LLM embedding usefulness, it can be validated by implementing a prompt-invariant scoring model which uses LLM embeddings instead of IDs, contrary to models described in section \ref{section:prompt-invariant-scoring}. If LLM embeddings are good enough, any iterative model should easily be able to reach similar accuracy to optimal one achieved by ``least squares'' model.
 
 To validate that hypothesis, gradient boosting model was implemented. The model was trained using margin ranking loss.
 
@@ -1203,7 +1203,7 @@ The \textit{AdamW} optimizer was used during the training process. Described by 
 
 \subsubsection{Residual Connections}
 
-As the depth of a dense neural network increases, the problem of vanishing gradients arises~\cite{he2016deep}. The gradient of early layer weights is a product of the activation function gradients and the weight values of later layers. Due to regularization and similar mechanisms, these values tend to be smaller than 1 on average, causing a gradual decrease in gradient magnitude. To mitigate this issue, residual connections were introduced. Initially described by He et al. in \textit{Deep Residual Learning for Image Recognition} paper \cite{he2016deep}, residual connections introduce a "skip-path" for each layer. Mathematically, this means that the layer input is added to the layer output. The modification ensures that early layers have a direct path to network output. As vector addition can only be performed if vectors have the same dimensionality, the implementation of skip connections that relies on adding layer input to output can only be performed for layers that have the same input and output dimension. The mechanism can be easily extended to layers where these dimensions are not equal, though, by introducing a linear projection layer with the same input and output dimensions as the "primary" layer, but without activation functions, normalization layers, and so on. This extension is also described in \textit{Deep Residual Learning for Image Recognition} paper \cite{he2016deep}, in the context of skip connections between CNN layers with different channel counts. The idea can be justified by the fact that application of multiple linear transformations is equivalent to a single linear transformation. In other words, an arbitrary early layer of the network can influence the output through a single linear transformation, which means it receives a clear gradient signal. 
+As the depth of a dense neural network increases, the problem of vanishing gradients arises~\cite{he2016deep}. The gradient of early layer weights is a product of the activation function gradients and the weight values of later layers. Due to regularization and similar mechanisms, these values tend to be smaller than 1 on average, causing a gradual decrease in gradient magnitude. To mitigate this issue, residual connections were introduced. Initially described by He et al. in \textit{Deep Residual Learning for Image Recognition} paper \cite{he2016deep}, residual connections introduce a ``skip-path'' for each layer. Mathematically, this means that the layer input is added to the layer output. The modification ensures that early layers have a direct path to network output. As vector addition can only be performed if vectors have the same dimensionality, the implementation of skip connections that relies on adding layer input to output can only be performed for layers that have the same input and output dimension. The mechanism can be easily extended to layers where these dimensions are not equal, though, by introducing a linear projection layer with the same input and output dimensions as the ``primary'' layer, but without activation functions, normalization layers, and so on. This extension is also described in \textit{Deep Residual Learning for Image Recognition} paper \cite{he2016deep}, in the context of skip connections between CNN layers with different channel counts. The idea can be justified by the fact that application of multiple linear transformations is equivalent to a single linear transformation. In other words, an arbitrary early layer of the network can influence the output through a single linear transformation, which means it receives a clear gradient signal. 
 
 \subsubsection{Loss Functions}
 
@@ -1439,7 +1439,7 @@ A number of fine-tuning methods were implemented. Initially, the easiest approac
 
 \subsubsection{Interaction Features}
 
-The model is designed to learn most of the information required for score prediction through fine-tuning. This decision dictates the small size of scoring head module -- its only purpose is to combine LLM embedding vectors (and scalar prompt features, if they turn out to be useful) with prompt embeddings. However, this introduces certain risks. The "path length", or more formally, the number of operations between prompt text and output, is significantly bigger than that between other inputs and output. This may cause the model to initially take the path of least resistance, focusing only on LLM embeddings (essentially learning the optimal prompt-invariant score for each vector), and discarding prompt embeddings entirely, effectively blocking gradient flow to the transformer module.
+The model is designed to learn most of the information required for score prediction through fine-tuning. This decision dictates the small size of scoring head module -- its only purpose is to combine LLM embedding vectors (and scalar prompt features, if they turn out to be useful) with prompt embeddings. However, this introduces certain risks. The ``path length'', or more formally, the number of operations between prompt text and output, is significantly bigger than that between other inputs and output. This may cause the model to initially take the path of least resistance, focusing only on LLM embeddings (essentially learning the optimal prompt-invariant score for each vector), and discarding prompt embeddings entirely, effectively blocking gradient flow to the transformer module.
 
 To address this issue, the simple concatenation of projections of scoring head input vectors was replaced by another combining operation. The goal is to discourage the model from learning scores that depend only on LLM embeddings, and instead encourage it to produce scores based on certain interactions between prompt representation and LLM embedding. To encode that interaction, the scalar product was used. Scoring head module takes as input the scalar product of the LLM embedding projection and the concatenated prompt embedding and scalar prompt features projections. As the scalar product requires arguments to be of the same dimensionality, the projection layer sizes were adjusted. The size of the scalar features projection is configurable, with the prompt embedding projection being twice as big and the LLM embedding projection -- three times as big.
 
@@ -1559,7 +1559,7 @@ Modular structure of response predictive model makes it more interpretable than 
 
 \subsubsection{Loss Function}
 
-Due to relative complexity of training process of response predictive model, it requires a more complex loss function design than other models. Using a simpler design (i.e. just ranking loss) ultimately leads to a "collapse" to a simpler, locally optimal state. For example, if no effort is made to ensure predicted and encoded representations are similar, scoring module can just learn to treat both types of representations differently. 
+Due to relative complexity of training process of response predictive model, it requires a more complex loss function design than other models. Using a simpler design (i.e. just ranking loss) ultimately leads to a ``collapse'' to a simpler, locally optimal state. For example, if no effort is made to ensure predicted and encoded representations are similar, scoring module can just learn to treat both types of representations differently. 
 
 Six loss components are combined, according to equation \ref{equation:response-predictive-loss}. Weights $k_\text{pred}$, $k_\text{repr}$ and $k_\text{KL}$ are configurable.
 
@@ -1689,7 +1689,7 @@ Conversely to previously described models, response predictive model shows some 
 
 \subsection{Multistage Models}
 
-Models described in this section are focusing on assigning a score based on prompt and LLM information. While certain metrics were introduced to at least partially interpret their decisions (described in sections \ref{section:dnn-model-metrics} and \ref{equation:scoring-gb-metrics}), but in general this formulation of the task does not imply any interpretability. To help with that, model chaining mechanism was introduced. Taking advantage of the fact that scores learned during training are not constrained in any way, given a trained scoring model as "base", another can be fitted on its errors, attempting to predict the difference between its predecessor and the true value. Final scores are defined as the sum of both predictions.
+Models described in this section are focusing on assigning a score based on prompt and LLM information. While certain metrics were introduced to at least partially interpret their decisions (described in sections \ref{section:dnn-model-metrics} and \ref{equation:scoring-gb-metrics}), but in general this formulation of the task does not imply any interpretability. To help with that, model chaining mechanism was introduced. Taking advantage of the fact that scores learned during training are not constrained in any way, given a trained scoring model as ``base'', another can be fitted on its errors, attempting to predict the difference between its predecessor and the true value. Final scores are defined as the sum of both predictions.
 
 We can describe model chaining via equation \ref{equation:model-chaining}. The main interpretability benefit comes from a possibility of constraining input values passed to each model -- $I_k$ for a model given by $Score_k$. By gradually extending the set of input components, impact of introduction of each component is clearly visible as an increase in joint model performance quality. 
 
@@ -1698,7 +1698,7 @@ We can describe model chaining via equation \ref{equation:model-chaining}. The m
     Score(I) = \sum_k Score_k(I_k), \quad \forall_k I_k \subset I
 \end{equation}
 
-In the LLM scoring task, multi-stage models can be especially useful when a prompt-invariant model is used as base. As described in section \ref{section:prompt-invariant-scoring}, optimal score assignment based only on chosen LLM is rather simple. By using such model and training a more complex model to predict prompt-specific differences, we clearly separate accuracy and score contributions that use prompt information from base LLM-only "bias".
+In the LLM scoring task, multi-stage models can be especially useful when a prompt-invariant model is used as base. As described in section \ref{section:prompt-invariant-scoring}, optimal score assignment based only on chosen LLM is rather simple. By using such model and training a more complex model to predict prompt-specific differences, we clearly separate accuracy and score contributions that use prompt information from base LLM-only ``bias''.
 
 An additional advantage of multi-stage approach is faster training. Complex models may take multiple epochs before reaching the optimal prompt-invariant accuracy. If a prompt-invariant model is used as a base, however, optimal prompt-invariant accuracy is the starting point.
 
@@ -2094,9 +2094,9 @@ Task completion process that the system relies on can be illustrated by examinin
 When the task is created, the initial planning step is queued. A call to \textit{Gemini 3.1 Pro Preview} returns a structured list of steps, which, in this case, is quite short:
 
 \begin{enumerate}
-    \item \textbf{Prompt:} "Identify the largest and smallest county seats in Washington state strictly based on the land area of the county seat itself (not the county's land area). Use web search to find and compare the land areas of Washington's county seats and output the names of the largest and smallest ones." \\
+    \item \textbf{Prompt:} ``Identify the largest and smallest county seats in Washington state strictly based on the land area of the county seat itself (not the county's land area). Use web search to find and compare the land areas of Washington's county seats and output the names of the largest and smallest ones.'' \\
     \textbf{Required Capabilities:} native web search, reasoning
-    \item \textbf{Prompt:} "Reevaluate the plan in order to create specific steps to query the official 2020 Census population (from data.census.gov) for the exact cities identified in step 1, calculate the integer difference, and format the final answer exactly as requested." (this is a reevaluation step).
+    \item \textbf{Prompt:} ``Reevaluate the plan in order to create specific steps to query the official 2020 Census population (from data.census.gov) for the exact cities identified in step 1, calculate the integer difference, and format the final answer exactly as requested.'' (this is a reevaluation step).
 \end{enumerate}
 
 To complete the first step, \textit{Gemini 2.5 Flash Lite} is chosen. The model completes the task, producing output presented on figure \ref{figure:gaia-question-task-execution-example-step-1}.
@@ -2104,10 +2104,10 @@ To complete the first step, \textit{Gemini 2.5 Flash Lite} is chosen. The model 
 \begin{figure}[htbp]
     \begin{framed}
         Reasoning (overview of internal reasoning process returned by the provider): \\
-        \textit{"I've compiled and cross-referenced the land area data for all 39 Washington county seats. I've definitively identified the largest and smallest among them based on this verified information."} \\
+        \textit{``I've compiled and cross-referenced the land area data for all 39 Washington county seats. I've definitively identified the largest and smallest among them based on this verified information.''} \\
         Output: \\
-        \textit{"Largest county seat: Seattle \\
-        Smallest county seat: Pomeroy"}
+        \textit{``Largest county seat: Seattle \\
+        Smallest county seat: Pomeroy''}
     \end{framed}
     \caption{Model output while completing step 1}
     \label{figure:gaia-question-task-execution-example-step-1}
@@ -2117,9 +2117,9 @@ Subsequent reevaluation step receives the output, and generates 2 additional ste
 
 \begin{enumerate}
     \setcounter{enumi}{2}
-    \item \textbf{Prompt:} "Find the official 2020 Census population for both Seattle, Washington, and Pomeroy, Washington. Use a web search to find the exact population figures as reported by the 2020 decennial census (data.census.gov)." \\
+    \item \textbf{Prompt:} ``Find the official 2020 Census population for both Seattle, Washington, and Pomeroy, Washington. Use a web search to find the exact population figures as reported by the 2020 decennial census (data.census.gov).'' \\
     \textbf{Required Capabilities:} native web search
-    \item \textbf{Prompt:} "Calculate the integer difference between the 2020 populations of Seattle and Pomeroy obtained in the previous step. Verify that the response format matches the requirement exactly, and output 'Final Answer: [difference]' at the very end of your response." \\
+    \item \textbf{Prompt:} ``Calculate the integer difference between the 2020 populations of Seattle and Pomeroy obtained in the previous step. Verify that the response format matches the requirement exactly, and output 'Final Answer: [difference]' at the very end of your response.'' \\
     \textbf{Required Capabilities:} none
 \end{enumerate}
 
@@ -2128,8 +2128,8 @@ The third step is completed by \textit{Gemini 2.5 Flash}. Output is shown on fig
 \begin{figure}[htbp]
     \begin{framed}
         Output: \\
-        \textit{"Seattle 2020 Census Population: 737,015 \\
-        Pomeroy 2020 Census Population: 1,389"}
+        \textit{``Seattle 2020 Census Population: 737,015 \\
+        Pomeroy 2020 Census Population: 1,389''}
     \end{framed}
     \caption{Model output while completing step 3}
     \label{figure:gaia-question-task-execution-example-step-3}
