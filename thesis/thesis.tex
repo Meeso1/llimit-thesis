@@ -480,11 +480,17 @@ The system was implemented as a REST API application, which allows users to crea
 
 Implementation of the system is available in a \textit{GitHub} repository: \url{https://github.com/Meeso1/llimit}.
 
+\section{Overview}
+
+The chapter describes the implementation of the task completion system. Sections \ref{section:technology-selection} and \ref{section:api-interface} start by describing the technical aspects of the project: selected technologies and the API interface. The LLM provider integration is outlined in section \ref{section:llm-integration}. The high-level design of the task execution process is then described in section \ref{section:task-execution-process}, followed by an in-depth descriptions of its parts -- section \ref{section:file-handling} outlines how file inputs are handled, section \ref{section:async-processing} describes the asynchronous paradigm of the design of the system, and section \ref{section:error-recovery} specifies error handling an recovery. Finally, section \ref{section:llm-selection} specifies the selection process of the LLM model for completing each individual task step, which motivates further research problems explored in chapters \ref{section:response-quality-prediction} and \ref{section:length-prediction}.
+
 \section{Technology selection}
+\label{section:technology-selection}
 
 The system was implemented in \textit{Python} 3.13, using \textit{FastAPI} \cite{fastapi2018} framework. Scoring models were implemented using \textit{Pytorch} and \textit{XGBoost} packages, with \textit{scikit-learn} utilities being used for preprocessing.
 
 \section{API Interface}
+\label{section:api-interface}
 
 In its essence, the task completion process is very simple from a user perspective. The only information that needs to be provided by the user is the task prompt, and files required for task completion. These actions were implemented as two \texttt{POST} endpoints. Supplementary \texttt{GET} endpoints on the same routes make it possible to inspect the state of running and completed tasks, completing the minimal API design required for task execution.
 
@@ -504,6 +510,7 @@ The presented list does not describe all endpoints that were implemented. Routes
 The system uses API key authentication. Every request requires the key to be present in the \texttt{Authentication} HTTP header, validating access rights, and allowing for attribution of the request to the user whose API key was used. The API exposes a set of API key management endpoints under \texttt{/api-keys} route, allowing for listing names of existing API keys, creating new keys, and deleting them.
 
 \section{LLM integration}
+\label{section:llm-integration}
 
 % TODO(maybe): add references to stuff described in this section, where it makes sense
 Integration with LLM providers is a central part of the system. The contemporary commercial LLM landscape features a high number of providers, each offering a selection of models. Certain conventions exist (for example, \texttt{openai} integration packages for various programming languages are widely adopted by different providers, offering compatible API interface), however they cover only a part of the functionality required by the system. Chat and one-shot completion APIs are standardized, but other aspects, like per-request configuration or pricing information are not.
@@ -513,6 +520,7 @@ This problem is solved by \textit{OpenRouter}. \textit{OpenRouter} is an LLM gat
 Usage of \textit{OpenRouter} also simplifies API key management. In case of direct integrations, a separate API key would be required for each supported provider. Instead, a single \textit{OpenRouter} API key can be used for all LLM requests. This simplification makes it possible to skip the implementation of API key management services in the system altogether, instead requiring the API key to be included in API requests that require LLM usage, without saving it to a persistent location server-side.
 
 \section{Task Execution Process}
+\label{section:task-execution-process}
 
 \begin{figure}[h]
     \centering
@@ -549,6 +557,7 @@ The following capabilities are implemented:
 \end{itemize}
 
 \section{File Handling}
+\label{section:file-handling}
 
 Files are uploaded independently from tasks. During upload, in addition to file contents and standard file upload metadata, request specifies declared content MIME type, optional description, and optional user-specified metadata.
 
@@ -680,10 +689,15 @@ The cost of file inputs depends on their type.
 Requirements described in section \ref{section:requirements} state that the system should be independent from the set of LLMs whose prompt and response data was included in the dataset used for scoring model creation, handling unknown LLM IDs and assigning scores based on a certain mean LLM representation. This requirement ensures that the set of LLM models available through \textit{OpenRouter} doesn't need to be restricted in any way. While useful in practice, this characteristic is undesired when testing the system. For that purpose, a possibility of limiting the set of available LLMs was introduced. If the list of allowed model names is set through an API endpoint, only specified LLMs will be used for step completion. This ensures that, when the system is tested, all available LLMs can be scored without falling back to average LLM representation.
 
 \chapter{Response Quality Prediction}
+\label{section:response-quality-prediction}
 
-Prediction of expected quality of the response that the chosen LLM would return, given a certain prompt, is the main research aspect of this work. As described in section \ref{section:llm-selection}, predicted LLM scores, along with estimated request cost, are used to determine which LLM should be utilized while completing a step. 
+Prediction of expected quality of the response that the chosen LLM would return, given a certain prompt, is the main research aspect of this work. As described in section \ref{section:llm-selection}, predicted LLM scores, along with estimated request cost, are used to determine which LLM should be utilized while completing a step.
 
 Implementation of all models described in this section, along with performed experiments, can be found in a \textit{GitHub} repository: \url{https://github.com/Meeso1/llimit-model-selection}.
+
+\section{Overview}
+
+This chapter describes the process of implementing and evaluating a selection of machine learning models. Section \ref{section:dataset-selection} motivates the selection of the human comparison dataset, and describes the chosen option. Section \ref{section:preprocessing-and-features} describes input feature construction and selection, followed by their analysis and transformations in section \ref{section:data-analysis-and-transformations}. After input features are described, section \ref{section:prompt-invariant-scoring} establishes a baseline for scoring models by ignoring the prompt information. The LLM embedding problem is explored in section \ref{section:llm-embedding}, comparing three distinct machine learning models that produce embedding vectors. Finally, sections \ref{section:scoring-simple-models} and \ref{section:scoring-complex-models} describe and compare five response quality prediction machine learning models.
 
 \section{Dataset Selection}
 \label{section:dataset-selection}
@@ -789,6 +803,7 @@ Finally, 5 boolean features describing the expected output were introduced:
 \end{itemize}
 
 \section{Data Analysis \& Transformations}
+\label{section:data-analysis-and-transformations}
 
 Feature transformations were defined based on their value distributions. Two kinds of transformations were defined for numeric data, described further in this section. Aside from these transformations, all numeric features were scaled to a mean of 0 and a standard deviation equal to 1.
 
@@ -1175,6 +1190,7 @@ Training history of the model on both datasets are presented on figures \ref{fig
 \end{figure}
 
 \section{Simple Models}
+\label{section:scoring-simple-models}
 
 \subsection{DNN Model}
 \label{section:dnn-model}
@@ -1406,6 +1422,7 @@ Sensitivity analysis shows that the model doesn't use prompt information -- perm
 \end{figure}
 
 \section{Complex Models}
+\label{section:scoring-complex-models}
 
 \subsection{Transformer Model}
 
@@ -1756,7 +1773,12 @@ In case of \textit{Chatbot Arena} model, prompt sensitivity is exactly the same 
 
 Predicting how well different LLM models can handle a given prompt is the most important part of the LLM selection process. There is, however, a second unknown quantity that influences the choice: response length. While pricing rules of LLM requests are usually clear, dependence on response token count makes it impossible to accurately calculate the cost of a given request beforehand. Generally, this isn't a significant problem -- output tokens are relatively cheap, especially in the context of requests including images and files in the input. However, as response length estimation is necessary at the same point in task execution process as predicted response quality, it turns out that predicting the length using machine learning methods is quite easy to implement. As response length prediction is an interesting subproblem, it was decided to explore the topic.
 
+\section{Overview}
+
+Section \ref{section:length-prediction-features} opens with the description of input features and output data of the response length prediction problem, justifying the choice. Section \ref{section:length-prediction-metrics} defines a set of metrics monitored during the training process of implemented machine learning models, allowing their evaluation and troubleshooting of expected learning problems. Finally, section \ref{section:length-prediction-models} describes and compares implemented response length prediction models. 
+
 \section{Input and Output Data}
+\label{section:length-prediction-features}
 
 Response length prediction models use mostly the same input data as scoring models -- LLM embeddings, prompt embeddings, and scalar prompt features. Training is done using the same dataset as in case of scoring models training, with LLM comparisons broken down into prompt and response pairs.
 
@@ -1793,6 +1815,7 @@ Additionally, a synthetic accuracy-like metric was introduced, with the purpose 
 \end{equation}
 
 \section{Models}
+\label{section:length-prediction-models}
 
 \subsection{Linear Regression Model}
 
