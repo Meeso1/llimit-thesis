@@ -1175,6 +1175,8 @@ To validate that hypothesis, gradient boosting model was implemented. The model 
 
 Training history of the model on both datasets are presented on figures \ref{figure:prompt-invariant-gradient-boosting-results-lmarena} and \ref{figure:prompt-invariant-gradient-boosting-results-chatbot-arena}. As expected, the models reach nearly the same accuracy as L2 criterion approach. On \textit{LMArena}, gradient boosting model accuracy reaches $62.18 \%$ ($0.05 \%$ improvement over L2 criterion). On \textit{Chatbot Arena}, $74.55 \%$ is reached ($0.32 \%$ improvement). The small difference in values is caused by a different loss criterion that is being minimized.
 
+Loss plots show a clean decrease, followed by a near total stagnation after around 30 epochs, with a small degree of overfitting. Accuracy plot shows sudden jumps, which can be explained by the nature of the task -- as the model only has the information about the LLM, differences in accuracy can only be caused by the score assigned to a given LLM surpassing the score assigned to a different LLM.
+
 \begin{figure}[h]
     \centering
     \includegraphics[width=\textwidth]{thesis/plots/gradient-boosting-scoring-llm-embeddings-lmarena.png}
@@ -1304,7 +1306,7 @@ Configuration parameters were chosen manually. A more sophisticated hyperparamet
 
 DNN model results are presented on figures \ref{figure:dnn-scoring-results-lmarena} and \ref{figure:dnn-scoring-results-chatbot-arena}. On \textit{LMArena}, model reaches $62.61 \%$ accuracy after 80 training epochs. On \textit{Chatbot Arena}, $75.64 \%$ is reached after 33 epochs. Post-training sensitivity analysis results are shown in table \ref{table:dnn-scoring-results}.
 
-In both cases, improvement is marginal. Over the first 30 training epochs, training accuracy improves rapidly, with validation accuracy exhibiting a much slower growth. Afterwards, training accuracy continues improving at a slower pace, while validation accuracy stalls, and eventually starts to decrease slowly. Input projection variances show that prompt embedding vectors are essentially ignored, but scalar prompt feature projections have a similar norm and variance to LLM embeddings. Initially, the model seems to mostly rely on LLM embeddings to learn optimal prompt-invariant scores. Then, it begins discovering certain relationships between the prompt and assigned score -- this can be seen on score variance decomposition plot. However, these relationships don't seem to translate to validation set well. While a small fraction of them might be responsible for a marginal improvement in accuracy over prompt-invariant models, the difference between training and validation accuracy clearly states that a vast majority of patterns learned by the model in later stages are simply random artifacts of dataset split.
+In both cases, improvement is marginal. Over the first 30 training epochs, training accuracy improves rapidly, with validation accuracy exhibiting a much slower growth. Afterwards, training accuracy continues improving at a slower pace, while validation accuracy stalls, and eventually starts to decrease slowly. Input projection plots show that prompt embedding vectors are essentially ignored, but scalar prompt feature projections have a similar norm and variance to LLM embeddings. Gradient attribution confirms that prompt embeddings are not important for the model -- gradient magnitude attributed to them is around a $1000$ times smaller than for LLM embeddings. Initially, the model seems to mostly rely on LLM embeddings to learn optimal prompt-invariant scores. Then, it begins discovering certain relationships between the prompt and assigned score -- this can be seen on score variance decomposition plot. The fact that the model keeps learning is also confirmed by the gradient norms plot, which shows that while gradient magnitude decreases over the training process, it does not fall sharply to zero. However, relationships discovered by the model don't seem to translate to validation set well. While a small fraction of them might be responsible for a marginal improvement in accuracy over prompt-invariant models, the difference between training and validation accuracy clearly states that a vast majority of patterns learned by the model in later stages are simply random artifacts of dataset split.
 
 Inspection of model sensitivity (computed on validation set) gives additional insight into model behavior. In case of \textit{Chatbot Arena} dataset, we can conclude that the model did not learn any useful relationships between prompt data and assigned score -- random permutation of prompt data achieves a better (although only by $0.02 \%$) accuracy. Setting prompt embedding vectors to their mean does reduce the accuracy slightly, but the magnitude of this reduction is similar to the improvement observed for other sensitivity tests, the value can be explained by random noise. In case of \textit{LMArena}, sensitivities are small but positive. Shuffling prompt information causes accuracy reduction of $1.33 \%$. The most impactful scalar features are prompt character count ($0.43 \%$ reduction) and inverse type-token ratio ($0.34 \%$).
 
@@ -1520,7 +1522,7 @@ Transformer model training is the most time consuming out of all implemented mod
 
 In both cases, model performance is not the best. Scoring accuracy on both datasets is right below the prompt-invariant baseline. \textit{LMArena} model training turned out to be too short -- training loss values barely decrease. In case of \textit{Chatbot Arena}, 120 epochs are enough for the model to start learning, and for loss values to decrease. Validation accuracy slowly increases for the first 40 epochs, after which the model starts to overfit.
 
-Score variance decomposition and gradient attribution plots show strong reliance on model embeddings, which does not change over the training period. However, projection norms and gradient magnitudes don't collapse to 0. It seems like the model is simply not able to find any useful relationships between prompt information and assigned score, instead relying on LLM identity. This explanation is confirmed by sensitivity metrics.
+Score variance decomposition and gradient attribution plots show strong reliance on model embeddings, which does not change over the training period. However, projection norms and gradient magnitudes don't collapse to zero. Notably, prompt embedding projection variance is extremely small, however near zero variance with non-zero projection norm does not prevent gradient flow -- it only indicates learned omission of this input component. Interaction projection norm also behaves correctly -- its norm does decrease, but slowly and in a controlled manner. It seems like the model is simply not able to find any useful relationships between prompt information and assigned score, instead relying on LLM identity. This explanation is confirmed by sensitivity metrics.
 
 \begin{table}[h]
     \centering
@@ -1652,9 +1654,11 @@ The following loss component weights were chosen:
 
 \subsubsection{Results}
 
-Response predictive model results are shown on figures \ref{figure:response-predictive-results-lmarena} and \ref{figure:response-predictive-results-chatbot-arena}. Additionally, figures \ref{figure:response-predictive-loss-lmarena} and \ref{figure:response-predictive-loss-chatbot-arena} present loss component changes and related metrics. On \textit{LMArena}, model reaches $62.09 \%$ accuracy after 28 training epochs. On \textit{Chatbot Arena}, $74.98 \%$ is reached after 91 epochs. Post-training sensitivity analysis results are shown in table \ref{table:response-predictive-results}.
+Response predictive model results are shown on figures \ref{figure:response-predictive-results-lmarena} and \ref{figure:response-predictive-results-chatbot-arena}. Additionally, appendix \ref{section:training-plots-apprendix} contains plots presenting loss component changes and related metrics. On \textit{LMArena}, model reaches $62.09 \%$ accuracy after 28 training epochs. On \textit{Chatbot Arena}, $74.98 \%$ is reached after 91 epochs. Post-training sensitivity analysis results are shown in table \ref{table:response-predictive-results}.
 
-Plots tell a similar story to previously described approaches. The model is quick to achieve accuracy similar to the prompt-invariant baseline, after which it starts learning patterns which do not generalize to validation set. Monitored metrics don't show any clear cause of this behavior. Gradient magnitudes don't collapse to zero, projection norms decrease in a controlled fashion.
+Plots tell a similar story to previously described approaches. The model is quick to achieve accuracy similar to the prompt-invariant baseline, after which it starts learning patterns which do not generalize to validation set. Monitored metrics don't show any clear cause of this behavior. Gradient magnitudes don't collapse to zero, projection norms decrease in a controlled fashion. 
+
+The loss doesn't decrease over the training period, however that is not a bad sign in itself -- the learning process relies on an interaction between encoder and predictor components, which attempt to achieve different goals. The response representation variance initially experiences a sharp decrease, as meaningful behavior emerges from initial randomness, after which they stabilize. Prediction quality is high, and scorer accuracy on encoded response representations is similar to its accuracy on predicted representations. In the case of training accuracy, though, this accuracy reaches about $95 \%$. This behavior suggests that the predicted response representations do carry information that is useful for assigning the score -- however, carried information does not encode relationships that translate to validation set, rather than being simply an artifact of data split. 
 
 Conversely to previously described models, response predictive model shows some reliance on prompt information, especially on \textit{Chatbot Arena} dataset. Scalar features sensitivity is significantly smaller. \textit{LMArena} model is the most sensitive to average word length ($0.26 \%$), while for the model trained on \textit{Chatbot Arena}, highest sensitivity is recorded for word count feature ($0.73 \%$) and question density ($0.52 \%$). Interestingly, sensitivity to most important features for \textit{Chatbot Arena} model is significantly higher than sensitivity to all scalar features as a whole -- the model likely relies on some relationship between these and other scalar features, which is broken after only one component is changed.
 
@@ -1688,23 +1692,9 @@ Conversely to previously described models, response predictive model shows some 
 
 \begin{figure}[!h]
     \centering
-    \includegraphics[width=\textwidth]{thesis/plots/response-predictive-2-lmarena.png}
-    \caption{Loss values of response predictive model -- \textit{LMArena}}
-    \label{figure:response-predictive-loss-lmarena}
-\end{figure}
-
-\begin{figure}[!h]
-    \centering
     \includegraphics[width=\textwidth]{thesis/plots/response-predictive-1-chatbot-arena.png}
     \caption{Response predictive model results -- \textit{Chatbot Arena}}
     \label{figure:response-predictive-results-chatbot-arena}
-\end{figure}
-
-\begin{figure}[!h]
-    \centering
-    \includegraphics[width=\textwidth]{thesis/plots/response-predictive-2-chatbot-arena.png}
-    \caption{Loss values of response predictive model -- \textit{Chatbot Arena}}
-    \label{figure:response-predictive-loss-chatbot-arena}
 \end{figure}
 
 \subsection{Multistage Models}
@@ -1924,13 +1914,13 @@ Learning rate was set to $0.1$. $80 \%$ of columns and $80 \%$ of samples were u
 
 Gradient boosting model results are presented on figures \ref{figure:gb-length-prediction-metrics-lmarena} and \ref{figure:gb-length-prediction-metrics-chatbot-arena}. On \textit{LMArena}, the model reaches $41.05 \%$ accuracy after 500 epochs (with relative mean squared error equal to $0.6856$ and mean average error of $175.13$). On \textit{Chatbot Arena}, accuracy values reach $43.79 \%$ after 499 epochs (RMSE reaches $0.7438$ and MAE equals $70.20$). Post-training metrics are shown in table \ref{table:gb-length-prediction-results}.
 
-Both models perform significantly better than linear regression baseline. RMSE and MAE values were improved by about $30 \%$. Monitored metrics show steady convergence, although with a certain degree of overfitting -- training accuracy and loss improve quicker than validation values. On \textit{LMArena}, the model initially heavily relies on scalar prompt features, with prompt embedding having much smaller influence on the result. However, over the course of training newly added trees start relying more and more on prompt embedding vectors, which ultimately leads to reversing the relationship. At the end of training period, prompt embeddings have higher significance than scalar features. In case of \textit{Chatbot Arena}, prompt embedding have higher significance from the very beginning.
+Both models perform significantly better than linear regression baseline. RMSE and MAE values were improved by about $30 \%$. MAE and average relative error show steady convergence, although with a certain degree of overfitting -- training accuracy and loss improve quicker than validation values. Average error ratio and standard deviation ratio confirm this observation, although the convergence in this case stalls rather far from optimal level. Tree contributions get smaller over the training period, as expected. On \textit{LMArena}, the model initially heavily relies on scalar prompt features, with prompt embedding having much smaller influence on the result. However, over the course of training newly added trees start relying more and more on prompt embedding vectors, which ultimately leads to the reversal of the relationship. At the end of training period, prompt embeddings have higher significance than scalar features. In case of \textit{Chatbot Arena}, prompt embedding have higher significance from the very beginning.
 
 LLM ID and embedding vectors are used in a small fraction of splits, and sensitivity analysis further confirms that the model effectively ignores this input. LLM embedding vectors are not ignored, though, although their gain is rather small. Metrics suggest that prompt information is significantly more important than LLM information when response length is predicted, conversely to the relationship observed during response quality prediction.
 
 Prompt embedding vectors are more important than scalar features. On \textit{LMArena}, gain fractions are of comparable magnitude, while on \textit{Chatbot Arena} embedding vectors are responsible for 10 times larger gain. Surprisingly, prompt length's importance is quite small. This fact can be easily explained for \textit{LMArena} model -- the highest gain fraction is attributed instead to prompt word count ($28.01 \%$), followed by average word length ($2.48 \%$). This explanation does not extend to \textit{Chatbot Arena} model -- prompt length has the highest importance in this case, followed by specificity density ($1.08 \%$) and whether the prompt starts with a verb ($0.66 \%$). 
 
-Interestingly, the model tends to overestimate the response length by a significant margin. It's predictions also exhibit significantly smaller variance than training data.
+Interestingly, the model tends to overestimate the response length by a significant margin, as seen on the average relative ratio plot. It's predictions also exhibit significantly smaller variance than training data, which is illustrated by standard deviation ratio plot.
 
 \begin{table}[h]
     \centering
@@ -2009,9 +1999,11 @@ Both models reach accuracy maximum quite quickly, after which they overfit. Stil
 
 The model tends to overestimate the length of the response, and its predictions have lower variance than the training set. This behavior is very similar to gradient boosting models described in previous section.
 
-The model behaves quite chaotically, as seen on all plots (figures \ref{figure:dn-embedding-length-prediction-metrics-lmarena} and \ref{figure:dn-embedding-length-prediction-metrics-chatbot-arena}). Metric values change rapidly between subsequent epochs. This suggests that learning rate may be too high. However, lower learning rate results in significantly smaller peak accuracy -- overfitting begins earlier (after correcting for slower changes), causing validation accuracy to stop growing at earlier point. Reducing the learning rate from $0.005$ to $0.001$ and $0.0005$ results in accuracies of $47.43 \%$ and $43.75 \%$ on \textit{LMArena}, and $46.70 \%$ and $45.52 \%$ on \textit{Chatbot Arena}.
+The model behaves quite chaotically, as seen on all plots (figures \ref{figure:dn-embedding-length-prediction-metrics-lmarena} and \ref{figure:dn-embedding-length-prediction-metrics-chatbot-arena}). This is especially clear in the case of \textit{LMArena} model. Metric values change rapidly between subsequent epochs. This suggests that learning rate may be too high. However, lower learning rate results in significantly smaller peak accuracy -- overfitting begins earlier (after correcting for slower changes), causing validation accuracy to stop growing at earlier point. Reducing the learning rate from $0.005$ to $0.001$ and $0.0005$ results in accuracies of $47.43 \%$ and $43.75 \%$ on \textit{LMArena}, and $46.70 \%$ and $45.52 \%$ on \textit{Chatbot Arena}.
 
-Gradient attribution values show a quite different relationship between input components than total gain fractions recorded for gradient boosting model. Scalar prompt features dominate gradient attribution, while prompt embedding and LLM embedding vectors have similar values. This might be explained by scalar features being the most important for DNN models, which would be mostly consistent with the relationship between total gain fractions for gradient boosting models. It's also possible, though, that input components simply behave differently. This explanation is especially probable for LLM embedding vectors -- during training, only a handful of different values are observed (equal to the number of LLM models in training dataset). It's also possible that the model instead relies on LLM IDs -- gradient attribution was not computed for this input component, since it's not a continuous quantity, but an integer value.
+MAE and average relative error behave similarly to the accuracy -- they reach minimum quickly, after which they behave rather chaotically, keeping a consistent mean value. Average relative ratio and standard deviation ratio show similar behavior on \textit{LMArena}. However, on \textit{Chatbot Arena}, standard deviation ratio plot shows a different trend. After the maximum accuracy is reached, standard deviation of predictions keeps increasing, slowly converging to 1 (which is the optimal value).
+
+Gradient norms show a quite different relationship between input components than total gain fractions recorded for gradient boosting model. Scalar prompt features dominate gradient attribution, while prompt embedding and LLM embedding vectors have similar values. This might be explained by scalar features being the most important for response length prediction models, which would be mostly consistent with the relationship between total gain fractions for gradient boosting models. It's also possible, though, that input components simply behave differently. This explanation is especially probable for LLM embedding vectors -- during training, only a handful of different values are observed (equal to the number of LLM models in training dataset). Input projection norms are consistent with this idea -- all projection layers have similar magnitude. Another possible explanation is that the model instead relies on LLM IDs -- gradient attribution was not computed for this input component, since it's not a continuous quantity, but an integer value.
 
 On \textit{LMArena} dataset, the highest gradient attribution was recorded for the prompt word count feature ($8.58 \%$). Among features not directly related to prompt length, the most important was formal domain score ($4.13 \%$). \textit{Chatbot Arena} model also recorded the highest gradient attribution for prompt word count ($4.89 \%$). The second highest gradient attribution value was assigned to academic domain score ($4.47 \%$).  
 
@@ -2294,6 +2286,24 @@ The system implementation could be extended in a multitude of ways. The most nat
 
 The scoring component needs further improvements the most, however, the direction of these improvements is not obvious. A further exploration of existing and new model architectures could be fruitful. As implemented models expose a large number of hyperparameters, automatic hyperparameter tuning solutions could be used to explore different configurations. However, the fact that all explored approaches converge on a very similar accuracy value is not promising. Increasing the number of parameters could also be researched, although a strong tendency to overfit that all models exhibit suggest that results will likely not be satisfactory.
 
+\appendix
+\chapter{Additional Model Training Plots}
+\label{section:training-plots-apprendix}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[width=\textwidth]{thesis/plots/response-predictive-2-lmarena.png}
+    \caption{Loss values of response predictive model -- \textit{LMArena}}
+    \label{figure:response-predictive-loss-lmarena}
+\end{figure}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[width=\textwidth]{thesis/plots/response-predictive-2-chatbot-arena.png}
+    \caption{Loss values of response predictive model -- \textit{Chatbot Arena}}
+    \label{figure:response-predictive-loss-chatbot-arena}
+\end{figure}
+
 % ------------------------------- BIBLIOGRAPHY ---------------------------
 % LEXICOGRAPHICAL ORDER BY AUTHORS' LAST NAMES
 % FOR AMBITIOUS ONES - USE BIBTEX
@@ -2344,8 +2354,15 @@ The scoring component needs further improvements the most, however, the directio
 \thispagestyle{empty}
 
 % -----------------------------  LIST OF TABLES --------------------------------
-\renewcommand{\listtablename}{Spis tabel}
 \listoftables
+\thispagestyle{empty}
+
+% -----------------------------  LIST OF APPENDICES ---------------------------
+\chapter*{List of appendices}
+
+\begin{enumerate}
+\item Additional Model Training Plots
+\end{enumerate}
 \thispagestyle{empty}
 
 
