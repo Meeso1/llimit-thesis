@@ -419,13 +419,36 @@ As \textit{RoRF} was published about a month after \textit{RouteLLM} paper, eval
 
 While the results are similar to or better in the case of \textit{RoRF}, this improvement likely comes simply from fitting routing models specifically to a given pair of LLMs, rather than training for a general case.
 
-Both works described in this section attempt to solve a somewhat simplified variant of the LLM routing problem. The routing decision is made between two possibilities -- in the case of \textit{RouteLLM}, between a stronger and weaker LLM model group, and in the case of \textit{RoRF}, between a single pair of LLM models. This leaves a clear direction of further research, which motivates a number of project requirements stated in the next section. 
+Both works described in this section attempt to solve a somewhat simplified variant of the LLM routing problem. The routing decision is made between two possibilities -- in the case of \textit{RouteLLM}, between a stronger and weaker LLM model group, and in the case of \textit{RoRF}, between a single pair of LLM models. This leaves a clear direction of further research, which motivates a number of research questions stated in the next chapter. 
 
-\chapter{System Requirements \& Constraints}
+\chapter{Research Questions}
+
+As described in the introduction, the thesis is motivated by the implementation of an LLM task completion system. While this goal is deeply practical, without a singular research topic encapsulating the entire work, it does imply a set of research problems that can be explored.
+
+The central research problem of the thesis is the exploration of LLM response quality prediction. A similar question is explored by referenced works -- in particular, the \textit{RouteLLM} paper \cite{ong2025routellm} and \textit{Routing on Random Forests} article \cite{notdiamond2024rorf}. However, while these works research the effectiveness of routing queries between a single pair of LLM models which differ in the level of ``intelligence'' (for example, different-sized variants offered by a single provider), this work instead focuses on assigning a response quality score based on the selected LLM model and the provided prompt, making it possible to compare any pair of LLMs. It is an extension of the routing problem addressed by these works. The research problem can be summarized as \textbf{predicting the quality score of LLM response based on user prompt and LLM identity, matching human comparison data}. The effectiveness of machine learning models implemented for that purpose will be measured by the accuracy they obtain over the \textit{LMArena} comparison dataset (described in section \ref{section:dataset-selection}).
+
+The second research question stems from the extendability of the response quality prediction component. Reliance on human-annotated comparison data is problematic. Such datasets are accessible (described in greater detail in \ref{section:dataset-selection}). However, requiring a human-compared set of responses for each new LLM model is not practical, due to the pace at which new LLMs are published, and the time and effort required to prepare such a dataset. To ensure that the quality prediction module can be extended without human comparisons, embedding models are introduced -- they produce embedding vectors representing LLM models based only on their response data. The second research topic of this thesis can be concisely described as \textbf{implementing and comparing LLM embedding methods as the source of LLM identity information in response quality prediction models}. This topic is closely related to LLM fingerprinting: the problem of recognizing an LLM model based on a small sample of its responses. The LLM embedding mechanism has two main purposes: ensuring distinguishability between models, so that a subset of responses produced by a given LLM is likely to be correctly recognized, and usefulness in response quality prediction. The first quality will be measured by a special distinguishability metric, defined in section \ref{section:llm-embedding}, while the second quality will be verified by extending a trained quality prediction component to an unseen LLM model and measuring its accuracy over new comparison pairs.
+
+Prompt routing in the system will be performed based on predicted response quality and estimated request cost. The LLM pricing rules are usually clear, but accurate calculation of the cost before the request is made is not possible due to its dependence on the LLM behavior and output -- among other factors, the number of tokens in the returned response. The third research problem of this thesis is \textbf{the prediction of LLM response token count based on user prompt}. Machine learning models implemented to predict output token counts will be evaluated based on their accuracy on LLM requests included in \textit{LMArena} dataset. In addition to the exploration of the effectiveness of various prediction models,  the impact of length prediction errors on cost estimation error will be measured -- as LLM request costs depend on a variety of factors, it's possible that accurate prediction of response token count impacts the estimation to a lower extent. 
+
+In addition to measuring the performance of parts of the system specified above, effectiveness of the whole system will be verified. This will be achieved using \textit{GAIA} benchmark (described in section \ref{section:solution-analysis}), which evaluates the implementation on a set of multi-step tasks. However, maximizing the accuracy over this benchmark is not the primary goal -- it would require experiments in prompt and context engineering, which won't be performed.
+
+\chapter{Description of the System}
+
+The system was implemented as a REST API application, which allows users to create a task, monitor its state, and receive the result. For simplicity, no UI was implemented -- the system can be controlled by manual HTTP requests instead. Implementing a user-friendly interface would certainly be an improvement, but it isn't too interesting in the context of the problem, while the relative simplicity of the implemented operations makes it not required for testing and demonstration purposes.
+
+Implementation of the system is available in a \textit{GitHub} repository: \url{https://github.com/Meeso1/llimit}.
+
+\section{Overview}
+
+The chapter describes the implementation of the task completion system. Section \ref{section:requirements-and-constraints} opens with a list of technical requirements that the system is expected to satisfy and a set of constraints, describing aspects that will not be implemented or researched. Sections \ref{section:technology-selection} and \ref{section:api-interface} describe technical aspects of the project: selected technologies and the API interface. The LLM provider integration is outlined in section \ref{section:llm-integration}. The high-level design of the task execution process is then described in section \ref{section:task-execution-process}, followed by an in-depth descriptions of its parts -- section \ref{section:file-handling} outlines how file inputs are handled, section \ref{section:async-processing} describes the asynchronous paradigm of the design of the system, and section \ref{section:error-recovery} specifies error handling an recovery. Finally, section \ref{section:llm-selection} specifies the selection process of the LLM model for completing each individual task step, which motivates further research problems explored in chapters \ref{section:response-quality-prediction} and \ref{section:length-prediction}.
+
+\section{System Requirements \& Constraints}
+\label{section:requirements-and-constraints}
 
 The implementation of the system was preceded by defining a set of requirements that it should satisfy, as well as constraints on its functionalities. As the system is mainly designed for personal use and demonstration purposes, rather than for a hosted instance to be accessed by the general public, user-friendliness and security requirements are secondary concerns and are not discussed in this section.
 
-\section{Requirements}
+\subsection{Requirements}
 \label{section:requirements}
 
 \begin{enumerate}
@@ -447,7 +470,7 @@ The implementation of the system was preceded by defining a set of requirements 
     New LLMs are released often. Without some fallback handling of unseen LLMs, the system would either require prompt and response data from all available LLMs for the function or some LLM whitelist mechanism would be necessary. The first option is extremely inconvenient, and the second is too restrictive. Falling back to some default scoring behavior is a more practical alternative. Obviously, as no information is available about previously unseen LLMs, the assigned score is likely to be too inaccurate.
 \end{enumerate}
 
-\section{Constraints}
+\subsection{Constraints}
 
 \begin{enumerate}
     \item \textbf{The system will use a single configured LLM model for task planning.} \\
@@ -459,30 +482,6 @@ The implementation of the system was preceded by defining a set of requirements 
     \item \textbf{Response quality will be predicted based only on the LLM and request prompt.} \\
     As described in section \ref{section:planning-and-reevaluation}, step definition contains more information than just the prompt. This data could be used as prediction input, potentially improving the accuracy of assigned scores. It was decided not to do so, mainly because of the lack of datasets that could be used for training.
 \end{enumerate}
-
-The implemented system is meant to fulfill the requirements described in this section. While this way of specifying the goal of the thesis may make it seem that the focus is on the implementation rather than research, that conclusion is not correct. Requirements enumerated in this section imply a set of research problems that this thesis explores -- in fact, they are the primary topic of this work. They are identified and described in the following section.
-
-\chapter{Research Questions} % TODO(review): improve name?
-
-As described in the introduction, the thesis is motivated by the implementation of an LLM task completion system. While this goal is deeply practical, without a singular research topic encapsulating the entire work, requirements specified in section \ref{section:requirements} do imply a set of problems that can be explored.
-
-The central research problem of the thesis is the exploration of LLM response quality prediction. A similar question is explored by referenced works -- in particular, the \textit{RouteLLM} paper \cite{ong2025routellm} and \textit{Routing on Random Forests} article \cite{notdiamond2024rorf}. However, while these works research the effectiveness of routing queries between a single pair of LLM models which differ in the level of ``intelligence'' (for example, different-sized variants offered by a single provider), this work instead focuses on assigning a response quality score based on the selected LLM model and the provided prompt, making it possible to compare any pair of LLMs. It is an extension of the routing problem addressed by these works. The research problem can be summarized as \textbf{predicting the quality score of LLM response based on user prompt and LLM identity, matching human comparison data}. The effectiveness of machine learning models implemented for that purpose will be measured by the accuracy they obtain over the \textit{LMArena} comparison dataset (described in section \ref{section:dataset-selection}).
-
-The second research question stems from requirements related to the extendability of the response quality prediction component. As motivated in section \ref{section:requirements}, reliance on human-annotated comparison data is problematic. Such datasets are accessible (described in greater detail in \ref{section:dataset-selection}). However, requiring a human-compared set of responses for each new LLM model is not practical, due to the pace at which new LLMs are published, and the time and effort required to prepare such a dataset. To ensure that the quality prediction module can be extended without human comparisons, embedding models are introduced -- they produce embedding vectors representing LLM models based only on their response data. The second research topic of this thesis can be concisely described as \textbf{implementing and comparing LLM embedding methods as the source of LLM identity information in response quality prediction models}. This topic is closely related to LLM fingerprinting: the problem of recognizing an LLM model based on a small sample of its responses. The LLM embedding mechanism has two main purposes: ensuring distinguishability between models, so that a subset of responses produced by a given LLM is likely to be correctly recognized, and usefulness in response quality prediction. The first quality will be measured by a special distinguishability metric, defined in section \ref{section:llm-embedding}, while the second quality will be verified by extending a trained quality prediction component to an unseen LLM model and measuring its accuracy over new comparison pairs.
-
-As specified in the requirements, prompt routing will be performed based on predicted response quality and estimated request cost. The LLM pricing rules are usually clear, but accurate calculation of the cost before the request is made is not possible due to its dependence on the LLM behavior and output -- among other factors, the number of tokens in the returned response. The third research problem of this thesis is \textbf{the prediction of LLM response token count based on user prompt}. Machine learning models implemented to predict output token counts will be evaluated based on their accuracy on LLM requests included in \textit{LMArena} dataset. In addition to the exploration of the effectiveness of various prediction models,  the impact of length prediction errors on cost estimation error will be measured -- as LLM request costs depend on a variety of factors, it's possible that accurate prediction of response token count impacts the estimation to a lower extent. 
-
-In addition to measuring the performance of parts of the system specified above, effectiveness of the whole system will be verified. This will be achieved using \textit{GAIA} benchmark (described in section \ref{section:solution-analysis}), which evaluates the implementation on a set of multi-step tasks. However, maximizing the accuracy over this benchmark is not the primary goal -- it would require experiments in prompt and context engineering, which won't be performed.
-
-\chapter{Description of the System}
-
-The system was implemented as a REST API application, which allows users to create a task, monitor its state, and receive the result. For simplicity, no UI was implemented -- the system can be controlled by manual HTTP requests instead. Implementing a user-friendly interface would certainly be an improvement, but it isn't too interesting in the context of the problem, while the relative simplicity of the implemented operations makes it not required for testing and demonstration purposes.
-
-Implementation of the system is available in a \textit{GitHub} repository: \url{https://github.com/Meeso1/llimit}.
-
-\section{Overview}
-
-The chapter describes the implementation of the task completion system. Sections \ref{section:technology-selection} and \ref{section:api-interface} start by describing the technical aspects of the project: selected technologies and the API interface. The LLM provider integration is outlined in section \ref{section:llm-integration}. The high-level design of the task execution process is then described in section \ref{section:task-execution-process}, followed by an in-depth descriptions of its parts -- section \ref{section:file-handling} outlines how file inputs are handled, section \ref{section:async-processing} describes the asynchronous paradigm of the design of the system, and section \ref{section:error-recovery} specifies error handling an recovery. Finally, section \ref{section:llm-selection} specifies the selection process of the LLM model for completing each individual task step, which motivates further research problems explored in chapters \ref{section:response-quality-prediction} and \ref{section:length-prediction}.
 
 \section{Technology selection}
 \label{section:technology-selection}
@@ -661,7 +660,7 @@ Cost of input tokens can be estimated to quite high accuracy, because the text o
 
 Output token count is unknown before the request is made. As output token cost contribution may be dominant in the final request cost, a machine learning prediction mechanism was implemented, which attempts to guess output length based on the chosen model and input prompt. It is described in section \ref{section:length-prediction}.
 
-\subsection{Reasoning Tokens}
+\subsubsection{Reasoning Tokens}
 
 Similarly to output token count, reasoning token count is also unknown before the request is made. In this case, however, there are no datasets that can be used as training data for a potential machine learning solution. Because of that, the system estimates reasoning token count as a proportion of predicted output token count, with a multiplier depending on requested reasoning effort. An argument can also be made that reasoning token cost will likely influence the total cost to a lesser degree due to significantly cheaper per-token cost relative to output tokens. \penalty-10000
 
