@@ -633,7 +633,7 @@ The following parameter values were chosen:
 
 Figure \ref{fig:utility-function-plot} shows values of the chosen utility function for normalized score and cost values between $-4$ and $4$. Introduction of softplus penalty terms produces steep negative slopes where cost or score values are too unfavorable.
 
-\begin{figure}[h]
+\begin{figure}[htbp]
     \centering
     \includegraphics[width=0.7\textwidth]{thesis/plots/utility_3d_plot.png}
     \caption{Utility function values}
@@ -663,7 +663,7 @@ Output token count is unknown before the request is made. As output token cost c
 
 \subsection{Reasoning Tokens}
 
-Similarly to output token count, reasoning token count is also unknown before the request is made. In this case, however, there are no datasets that can be used as training data for a potential machine learning solution. Because of that, the system estimates reasoning token count as a proportion of predicted output token count, with a multiplier depending on requested reasoning effort. An argument can also be made that reasoning token cost will likely influence the total cost to a lesser degree due to significantly cheaper per-token cost relative to output tokens. 
+Similarly to output token count, reasoning token count is also unknown before the request is made. In this case, however, there are no datasets that can be used as training data for a potential machine learning solution. Because of that, the system estimates reasoning token count as a proportion of predicted output token count, with a multiplier depending on requested reasoning effort. An argument can also be made that reasoning token cost will likely influence the total cost to a lesser degree due to significantly cheaper per-token cost relative to output tokens. \penalty-10000
 
 \subsubsection{Web search}
 
@@ -714,7 +714,7 @@ These reasons prompted a decision to rely on a newer alternative to \textit{Chat
 
 It's important to note that due to a very similar structure, these datasets can be used interchangeably. Due to previously mentioned reasons, mainly \textit{LMArena Human Preference} was used for model training and evaluation throughout this work. However, comparisons between datasets are made where relevant, highlighting important differences between their data.
 
-\section{Preprocessing \& Feature Selection}
+\section{Preprocessing \& feature selection}
 \label{section:preprocessing-and-features}
 
 Intuitively, when it comes to inferring the quality of LLM's response to a given input, the most important aspect of that prompt should be its semantic meaning -- ideally, prompts that are equivalent when it comes to meaning, differing only in wording, should produce the same answer. Semantic meaning of a given text can be captured via a range of specialized text embedding models, which, given an input, return a vector that should be useful for a range of classification or regression tasks. As such, prompt embedding vectors are the primary candidates for model input features. The computation of embedding vectors was implemented using \texttt{sentence-transformers} Python library \cite{reimers2019sentencetransformers}, which offers a wide range of embedding models through a unified interface.
@@ -805,7 +805,7 @@ Finally, 5 boolean features describing the expected output were introduced:
 \section{Data Analysis \& Transformations}
 \label{section:data-analysis-and-transformations}
 
-Feature transformations were defined based on their value distributions. Two kinds of transformations were defined for numeric data, described further in this section. Aside from these transformations, all numeric features were scaled to a mean of 0 and a standard deviation equal to 1.
+Feature transformations were defined based on their value distributions. Two kinds of transformations were defined for numeric data, described further in this section. Aside from these transformations, all numeric features were scaled to a mean of 0 and a standard deviation equal to 1.\penalty-10000
 
 First, certain features show exponential behavior. Features related to prompt length are a perfect example of that -- for example, character count (presented in the figure~\ref{figure:character-count-distribution}). A logarithmic transformation is applied to such features to compress their range and obtain a more uniform value distribution. Small values are clipped to $10^{-6}$ to prevent them from collapsing to $-\infty$. 
 
@@ -845,10 +845,10 @@ Distributions of example features before and after transformations are displayed
     \label{figure:science-domain-score-distribution}
 \end{figure}
 
-\section{Prompt-invariant Scoring}
+\section{Prompt-invariant scoring}
 \label{section:prompt-invariant-scoring}
 
-A natural simplification of the prompt routing problem comes from the assumption that LLM performance does not depend on the prompt. In this case, every LLM has a single score associated with it, and the problem reduces to assigning those scores based on comparison data. While this simplification makes the problem much less interesting and complex, it is more commonly used when ranking LLMs, due to capturing a general LLM quality rather than focusing on particular cases \cite{zheng2023mtbench, ong2025routellm}. Also, exploration of this problem will serve as a good baseline for prompt-aware scoring.
+A natural simplification of the prompt routing problem comes from the assumption that LLM performance does not depend on the prompt. In this case, every LLM has a single score associated with it, and the problem reduces to assigning those scores based on comparison data. While this simplification makes the problem much less interesting and complex, it is more commonly used when ranking LLMs, due to capturing a general LLM quality rather than focusing on particular cases \cite{zheng2023mtbench, ong2025routellm}. Also, exploration of this problem will serve as a good baseline for prompt-aware scoring.\penalty-10000
 
 The problem of scoring entries based on comparison data can be expressed more rigorously, turning it into an optimization problem with a well-defined fitness metric. Some such expressions have easily computable optimal solutions.
 
@@ -875,7 +875,7 @@ Then, node potentials can be interpreted as entry scores.
 
 The solution to the min-cost-max-flow problem also gives us an additional useful metric: percentage of ``meaningful'' comparisons in the comparison set. Any cycle in the network has positive cost (since all edges that don't include source and sink have positive cost), so optimal flow won't use them. Using that information, we can compute the ratio of used comparison edges (equal to total cost) to all comparisons. This quantity can be interpreted as the decisiveness of the comparison set -- since comparison cycles can't be scored correctly, the more common they are, the less correct is it to represent LLM quality via a single, prompt-independent score.
 
-\begin{table}[h]
+\begin{table}[htbp]
     \centering
     \caption{Min-cost-max-flow model results}
     \begin{tabular}{
@@ -1244,16 +1244,16 @@ Initially, margin ranking loss seemed more favorable -- once scores assigned to 
 
 \subsubsection{Checkpointing}
 
-Iterative machine learning models, given sufficiently long training time (or sufficiently high epoch count), often overfit to training data. As the objective which the model minimizes is computed over a set list of training samples, models with sufficiently high parameter counts eventually start learning patterns that randomly occur in data, and don't generalize to validation sample set. This is observed as model performance improvement over training data, while its validation performance begins to decrease.
+Iterative machine learning models, given sufficiently long training time (or sufficiently high epoch count), often overfit to training data. As the objective that the model minimizes is computed over a set list of training samples, models with sufficiently high parameter counts eventually start learning patterns that occur randomly in the data, and don't generalize to the validation sample set. This is observed as model performance improvement over the training data, while its validation performance begins to decrease.
 
-To address this problem, a simple checkpointing mechanism was introduced. Every epoch, validation accuracy is computed, and if its value is bigger than previously recorded, current model state is saved. When training completes, model is reverted to its best recorded state. This means that longer training process can never have a negative effect on model quality -- if the model starts to overfit to training data, or hits a plateau, it will be reverted to previous, better state.
+To address this problem, a simple checkpointing mechanism was introduced. Every epoch, validation accuracy is computed, and if its value is greater than previously recorded, the current model state is saved. When training is complete, the model is reverted to its best recorded state. This means that extending the training process will not harm model quality, since the model will revert to a previous, better state if it starts to overfit or plateau. 
 
 Due to its usefulness, this system was implemented in all iterative models.
 
 \subsubsection{Metrics}
 \label{section:dnn-model-metrics}
 
-Training process of every machine learning model can be monitored by following two primary metrics: loss function values, which the model is trained to minimize, and accuracy values, which, assuming good design of loss criterion, should increase as loss values decrease. Recording these values after every training epoch for both training and validation sets provides a way to verify if the model is learning correctly, overfits, stagnates, etc.
+The training process of every machine learning model can be monitored by following two primary metrics: loss function values, which the model is trained to minimize, and accuracy values, which, assuming good design of the loss criterion, should increase as loss values decrease. Recording these values after every training epoch for both training and validation sets provides a way to verify if the model is learning correctly, overfits, stagnates, etc.
 
 Although undeniably useful, accuracy and loss values alone are not enough to interpret the behavior of the model and to diagnose its flaws. A set of additional diagnostic metrics was introduced to help with that. They were chosen specifically to provide information about internal network behavior. The following metrics were defined:
 
@@ -1381,7 +1381,7 @@ Learning rate was set to $0.1$. A sample of $80 \%$ columns was used for each es
 
 \subsubsection{Results}
 
-Training results on each dataset are presented on figures \ref{figure:gradient-boosting-scoring-results-lmarena} and \ref{figure:gradient-boosting-scoring-results-chatbot-arena}. Post-training metrics are shown in table \ref{table:gradient-boosting-scoring-results}.
+Training results on each dataset are presented on figures \ref{figure:gradient-boosting-scoring-results-lmarena} and \ref{figure:gradient-boosting-scoring-results-chatbot-arena}. Post-training metrics are shown in table~\ref{table:gradient-boosting-scoring-results}.
 
 Both sets of plots look very similar. Training loss behaves similarly to validation loss initially. After a relatively small number of epochs, the rapid loss decrease slows down, with validation loss converging to a certain minimum level, and training loss maintaining a slower downward trend. Feature block importance plot shows that, in both cases, the model initially relies on LLM embeddings, whose influence diminishes in favor of prompt embeddings over training duration. Scalar prompt features are ignored by the model in both cases. Standard deviation of predictions rises steadily in both cases, while tree contributions gradually get smaller.
 
@@ -1483,11 +1483,11 @@ Additionally, a new metric was introduced: module gradient norms. The dense netw
 
 Instead of \textit{AdamW} optimizer, which was used for dense network model training, transformer model uses \textit{Muon} optimizer. Introduced by Jordan et al. in an article titled \textit{Muon: An Optimizer for Hidden Layers in Neural Networks} \cite{jordan2024muon}, and later evaluated in context of LLM training by Liu et al. in \textit{Muon is Scalable for LLM Training} paper \cite{liu2025muonscalable}, \textit{Muon} changes how momentum influences weight updates. While \textit{AdamW} only uses element-wise operations to update weights, \textit{Muon} exploits the matrix structure of most network parameters.  
 
-Algorithm \ref{algorithm:muon} describes weight update process. After gradient is computed and momentum is updated, orthogonalization is performed on the result by computing a polar factor $X = U V^T$, from singular value decomposition $M = (U V^T)(V \Sigma V^T)$. The result $X$ is a semi-orthogonal matrix, which captures the direction of required weight updates while normalizing the magnitude. This step effectively replaces the per-element second moment estimate ($\hat{v}_t$) normalization in \textit{AdamW} algorithm. Additionally, resulting matrix $X$ has all singular values equal to 1, so weight update $O_t$ has a bounded spectral norm regardless of how large the gradient was. This means that orthogonalization acts as implicit regularization.
+Algorithm \ref{algorithm:muon} describes the weight update process. After the gradient is computed and momentum is updated, orthogonalization is performed on the result by computing a polar factor $X = U V^T$, from singular value decomposition $M = (U V^T)(V \Sigma V^T)$. The result $X$ is a semi-orthogonal matrix that captures the direction of the required weight updates while normalizing the magnitude. This step effectively replaces the per-element second moment estimate ($\hat{v}_t$) normalization in \textit{AdamW} algorithm. Additionally, resulting matrix $X$ has all singular values equal to 1, so the weight update $O_t$ has a bounded spectral norm regardless of how large the gradient was. This means that orthogonalization acts as implicit regularization.
 
 Before orthogonalization is performed, Nesterov lookahead momentum correction is applied (Y. Nesterov, \textit{Introductory Lectures on Convex Optimization: A Basic Course} \cite{nesterov2004introductory}). As magnitude information is discarded, direction accuracy becomes more important, making the correction more important compared to previous optimizing algorithms, like \textit{Adam}.
 
-Orthogonalization is performed using Newton-Schulz iterative method. It is an approximate, inversion-free alternative to computationally expensive exact singular value decomposition methods. 
+Orthogonalization is performed using the Newton–Schulz iterative method, an approximate, inversion‑free alternative to the computationally expensive exact singular value decomposition. 
 
 \begin{algorithm}[h]
 \caption{Muon optimizer (for 2D hidden-layer parameters)}
@@ -1516,7 +1516,7 @@ Finetuning was performed using \textit{QLoRA} method, with 4-bit quantization, a
 
 \subsubsection{Results}
 
-Transformer model results are presented on figures \ref{figure:transformer-results-lmarena} and \ref{figure:transformer-results-chatbot-arena}. On \textit{LMArena}, model reaches $61.79 \%$ accuracy after 14 training epochs. On \textit{Chatbot Arena}, $74.64 \%$ is reached after 38 epochs. Sensitivity analysis results are shown in table \ref{table:transformer-scoring-results}.
+Transformer model results are presented on figures \ref{figure:transformer-results-lmarena} and \ref{figure:transformer-results-chatbot-arena}. On \textit{LMArena}, model reaches $61.79 \%$ accuracy after 14 training epochs. On \textit{Chatbot Arena}, $74.64 \%$ is reached after 38 epochs. Sensitivity analysis results are shown in table~\ref{table:transformer-scoring-results}.
 
 Transformer model training is the most time consuming out of all implemented models, taking multiple hours for each run. As \textit{LMArena} dataset contains about 5 times more samples than \textit{Chatbot Arena}, a difference in training time between datasets is significant. This difference motivates unequal number of training epochs -- 30 training epochs were performed for \textit{LMArena} model, while 120 epochs were computed for \textit{Chatbot Arena} model.
 
@@ -1708,23 +1708,23 @@ We can describe model chaining via equation \ref{equation:model-chaining}. The m
     Score(I) = \sum_k Score_k(I_k), \quad \forall_k I_k \subset I
 \end{equation}
 
-In the LLM scoring task, multi-stage models can be especially useful when a prompt-invariant model is used as base. As described in section \ref{section:prompt-invariant-scoring}, optimal score assignment based only on chosen LLM is rather simple. By using such model and training a more complex model to predict prompt-specific differences, we clearly separate accuracy and score contributions that use prompt information from base LLM-only ``bias''.
+In the LLM scoring task, multi-stage models can be especially useful when a prompt-invariant model is used as base. As described in section \ref{section:prompt-invariant-scoring}, optimal score assignment based only on chosen LLM is rather simple. By using such model and training a more complex model to predict prompt-specific differences, we clearly separate accuracy and score contributions that use prompt information from the base LLM-only ``bias''.
 
-An additional advantage of multi-stage approach is faster training. Complex models may take multiple epochs before reaching the optimal prompt-invariant accuracy. If a prompt-invariant model is used as a base, however, optimal prompt-invariant accuracy is the starting point.
+An additional advantage of multi-stage approach is faster training. Complex models may take multiple epochs before reaching optimal prompt-invariant accuracy. If a prompt-invariant model is used as a base, however, optimal prompt-invariant accuracy is the starting point.
 
 \subsubsection{Training Configuration}
 
-Multistage approach was tested using prompt-invariant gradient boosting model as base stage, and DNN model as secondary. DNN model configuration was the same as described in section \ref{section:dnn-training-config}.
+A multistage approach was tested using prompt-invariant gradient boosting model as the base stage and a DNN model as a secondary stage. The DNN model configuration was the same as described in section~\ref{section:dnn-training-config}.
 
 \subsubsection{Results}
 
-Results are presented on figures \ref{figure:dnn-multistage-results-lmarena} and \ref{figure:dnn-multistage-results-chatbot-arena}. On \textit{LMArena}, multistage model achieved $62.53 \%$ accuracy after 27 epochs. On \textit{Chatbot Arena}, $75.34 \%$ was achieved after 23 epochs. Sensitivity analysis results are presented in table \ref{table:dnn-multistage-results}.
+Results are presented in figures~\ref{figure:dnn-multistage-results-lmarena}~and~\ref{figure:dnn-multistage-results-chatbot-arena}. On \textit{LMArena}, the multistage model achieved $62.53 \%$ accuracy after 27 epochs. On \textit{Chatbot Arena}, $75.34 \%$ was achieved after 23 epochs. Sensitivity analysis results are presented in table \ref{table:dnn-multistage-results}.
 
 Plots look similar to their counterparts describing the variant without the base model. Expectedly, the main difference is a much shorter and less steep initial learning period, during which training and validation accuracy rise together to the baseline level -- the baseline is the starting point in this case.
 
-In case of \textit{Chatbot Arena} model, prompt sensitivity is exactly the same as for DNN model without the base prompt-invariant predictor (table \ref{table:dnn-scoring-results}) -- prompt information is ignored. \textit{LMArena} model shows lower sensitivity to prompt information than in aforementioned case. However, sensitivity to scalar features is higher. The most meaningful scalar features are prompt character count ($0.30 \%$) and multi-part request density ($0.21 \%$).
+In the case of \textit{Chatbot Arena} model, prompt sensitivity is exactly the same as for the DNN model without the base prompt-invariant predictor (table \ref{table:dnn-scoring-results}) -- prompt information is ignored. \textit{LMArena} model shows lower sensitivity to prompt information than in the aforementioned case. However, sensitivity to scalar features is higher. The most meaningful scalar features are prompt character count ($0.30 \%$) and multi-part request density ($0.21 \%$).
 
-\begin{table}[h]
+\begin{table}[htbp]
     \centering
     \caption{Multistage model results}
     \begin{tabular}{
@@ -1744,7 +1744,7 @@ In case of \textit{Chatbot Arena} model, prompt sensitivity is exactly the same 
     \label{table:dnn-multistage-results}
 \end{table}
 
-\begin{figure}[!h]
+\begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{thesis/plots/dn-embedding-multistage-lmarena.png}
     \caption{Multistage model results -- \textit{LMArena}}
@@ -1894,7 +1894,7 @@ Gradient boosting length prediction model is very similar to its equivalent used
 
 Contrary to scoring problem, length prediction task does not require a sophisticated objective function design. Correctness of a given score assignment depended on the score assigned to the other sample in the training pair, requiring custom solutions. As length prediction is a straightforward regression task, mean squared error is used as loss function.
 
-Training process is implemented iteratively, fitting an additional decision tree on top of already trained model during each \textit{epoch}. Diagnostic metrics are calculated and logged after each epoch, and model state is checkpointed, so that after training the model can be reverted to the state which achieved the highest validation accuracy. The model uses only metrics described in section \ref{section:length-prediction-metrics}.
+Training process is implemented iteratively, fitting an additional decision tree on top of already trained model during each \textit{epoch}. Diagnostic metrics are calculated and logged after each epoch, and model state is checkpointed, so that after training the model can be reverted to the state which achieved the highest validation accuracy. The model uses only metrics described in section~\ref{section:length-prediction-metrics}.
 
 \subsubsection{Metrics}
 
